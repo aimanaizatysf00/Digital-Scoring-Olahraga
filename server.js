@@ -6,7 +6,12 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+// Supaya fail html/css/js diproses tanpa error
 app.use(express.static(__dirname));
+
+// Routing asas supaya tak keluar error "Cannot GET /"
+app.get('/', (req, res) => res.sendFile(__dirname + '/pengadil.html'));
+app.get('/tv', (req, res) => res.sendFile(__dirname + '/tv.html'));
 
 // KEADAAN ASAL SISTEM (STATE)
 let state = {
@@ -25,12 +30,11 @@ let state = {
     redTeam: 'KONTINJEN MERAH'
   },
   score: { blue: 0, red: 0 },
-  penaltyPoints: { blue: 0, red: 0 }, // Menyimpan nilai mutlak mata potong
+  penaltyPoints: { blue: 0, red: 0 },
   penalties: {
     blue: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false },
     red: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false }
   },
-  verification: null,
   winnerData: null
 };
 
@@ -38,11 +42,9 @@ let timerInterval = null;
 
 function addLog(text) {
   const timestamp = new Date().toLocaleTimeString('ms-MY', { hour12: false });
-  const logMessage = `[${timestamp}] ${text}`;
-  io.emit('newLog', logMessage);
+  io.emit('newLog', `[${timestamp}]${text}`);
 }
 
-// LOGIK PENGIRAAN PEMENANG
 function calculateWinner() {
   const blueScore = state.score.blue;
   const redScore = state.score.red;
@@ -59,7 +61,6 @@ function calculateWinner() {
     winner = 'red';
     reason = 'Mata Akhir Tertinggi';
   } else {
-    // Apabila Markah Akhir Seri -> Semak Penolakan Hukuman Terkumpul
     if (blueDeductions < redDeductions) {
       winner = 'blue';
       reason = `Markah Seri (${blueScore}-${redScore}), Biru Menang Hukuman Lebih Sedikit (-${blueDeductions} vs -${redDeductions})`;
@@ -76,10 +77,8 @@ function calculateWinner() {
 }
 
 io.on('connection', (socket) => {
-  // Hantar state terkini kepada pengguna yang baru buka
   socket.emit('updateState', state);
 
-  // 1. KAWALAN MASA & ROUND
   socket.on('controlTimer', (action) => {
     if (action === 'start' && !state.timer.isRunning) {
       state.timer.isRunning = true;
@@ -120,14 +119,12 @@ io.on('connection', (socket) => {
     io.emit('updateState', state);
   });
 
-  // 2. KEMASKINI MAKLUMAT PERLAWANAN
   socket.on('updateMatchDetails', (data) => {
     state.matchDetails = data;
     addLog(`📝 Maklumat Perlawanan Dikemaskini (Match #${data.matchNo})`);
     io.emit('updateState', state);
   });
 
-  // 3. KAWALAN HUKUMAN & PENALTI
   socket.on('togglePenalty', ({ color, code, pts }) => {
     const isActive = state.penalties[color][code];
     state.penalties[color][code] = !isActive;
@@ -140,7 +137,7 @@ io.on('connection', (socket) => {
     } else {
       state.score[color] -= pts;
       state.penaltyPoints[color] -= penaltyVal;
-      addLog(`🔄 Hukuman Dibatalkan [${color.toUpperCase()}]: ${code}`);
+      addLog(`🔄 Hukuman Dibatalkan [${color.toUpperCase()}]:${code}`);
     }
 
     if (state.score[color] < 0) state.score[color] = 0;
@@ -149,7 +146,6 @@ io.on('connection', (socket) => {
     io.emit('updateState', state);
   });
 
-  // 4. PELARASAN MARKAH MANUAL
   socket.on('modifyScore', ({ color, pts }) => {
     state.score[color] += pts;
     if (state.score[color] < 0) state.score[color] = 0;
@@ -157,15 +153,11 @@ io.on('connection', (socket) => {
     io.emit('updateState', state);
   });
 
-  // 5. SEMAKAN JURI
   socket.on('requestVerification', (data) => {
-    state.verification = data;
     addLog(`🔍 Semakan Juri Dibuat: ${data.type} [${data.color.toUpperCase()}]`);
-    io.emit('updateState', state);
     io.emit('showVerificationOnTV', data);
   });
 
-  // 8. PENGISYTIHARAN PEMENANG KE TV
   socket.on('publishWinnerToTV', () => {
     const result = calculateWinner();
     state.winnerData = result;
@@ -174,7 +166,6 @@ io.on('connection', (socket) => {
     io.emit('showWinnerOnTV', result);
   });
 
-  // RESET KESELURUHAN
   socket.on('resetScore', () => {
     clearInterval(timerInterval);
     state.timer.currentTime = state.timer.duration;
@@ -187,7 +178,6 @@ io.on('connection', (socket) => {
       red: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false }
     };
     state.winnerData = null;
-    state.verification = null;
     addLog(`🔄 Sistem Direset Keseluruhan`);
     io.emit('updateState', state);
   });
