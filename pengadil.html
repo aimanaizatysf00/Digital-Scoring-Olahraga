@@ -6,55 +6,97 @@
   <script src="/socket.io/socket.io.js"></script>
   <style>
     body { font-family: sans-serif; background: #181818; color: white; padding: 15px; text-align: center; }
-    .score-display { font-size: 28px; color: #f1c40f; font-weight: bold; margin: 10px 0; background: #000; padding: 10px; border-radius: 10px; }
-    .section-title { font-size: 14px; margin-top: 15px; text-align: left; color: #f1c40f; text-transform: uppercase; font-weight: bold; border-bottom: 1px solid #444; padding-bottom: 5px; }
+    .score-display { font-size: 24px; color: #f1c40f; font-weight: bold; margin: 10px 0; background: #000; padding: 10px; border-radius: 10px; border: 2px solid #333; }
+    .timer-big { font-size: 32px; color: #2ecc71; font-family: monospace; }
+    .timer-big.paused { color: #e74c3c; }
+
+    .section-title { font-size: 13px; margin-top: 15px; text-align: left; color: #f1c40f; text-transform: uppercase; font-weight: bold; border-bottom: 1px solid #444; padding-bottom: 5px; }
     .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
-    button { padding: 10px; font-size: 14px; font-weight: bold; border-radius: 8px; border: none; cursor: pointer; color: white; }
+    button { padding: 10px; font-size: 13px; font-weight: bold; border-radius: 8px; border: none; cursor: pointer; color: white; }
     .blue { background: #2980b9; } .red { background: #c0392b; }
-    .blue-add { background: #1f618d; border: 2px solid #3498db; } .red-add { background: #922b21; border: 2px solid #e74c3c; }
+    .blue-add { background: #1f618d; border: 1px solid #3498db; } .red-add { background: #922b21; border: 1px solid #e74c3c; }
+    .btn-sub { background: #7f8c8d; border: 1px solid #bdc3c7; }
+    .green { background: #2ecc71; color: black; }
     .yellow { background: #f39c12; color: black; }
     .purple { background: #8e44ad; }
-    .grey { background: #7f8c8d; grid-column: span 2; padding: 12px; margin-top: 15px; }
-    #verifyStatus { font-size: 16px; color: #2ecc71; font-weight: bold; min-height: 24px; margin: 5px 0; }
+    .grey { background: #e74c3c; grid-column: span 2; padding: 12px; margin-top: 15px; font-size: 16px; }
+
+    /* PENALTY ACTIVE STATE */
+    button.active-p { border: 3px solid #f1c40f !important; box-shadow: 0 0 10px #f1c40f; background: #e74c3c !important; color: white; }
+
+    #verifyStatus { font-size: 15px; color: #2ecc71; font-weight: bold; min-height: 20px; margin: 5px 0; }
   </style>
 </head>
 <body>
   <h2>PANEL KETUA PENGADIL</h2>
   <div class="score-display">
-    <span id="roundText">PUSINGAN 1</span><br>
+    <span id="roundText">PUSINGAN 1</span> | <span id="timerText" class="timer-big">01:30</span><br>
     BIRU: <span id="blueScore">0</span> | MERAH: <span id="redScore">0</span>
   </div>
   <div id="verifyStatus"></div>
 
-  <div class="section-title">KAWALAN PUSINGAN (AUTO-RESET HUKUMAN)</div>
+  <!-- KAWALAN MASA (TIMER) -->
+  <div class="section-title">⏱️ KAWALAN MASA PERTANDINGAN</div>
+  <div class="btn-grid">
+    <button class="green" onclick="controlTimer('start')">▶️ MULA (START)</button>
+    <button class="yellow" onclick="controlTimer('pause')">⏸️ HENTI (PAUSE)</button>
+    <button class="purple" onclick="setTimerDuration(90)">Masa 1:30 Min</button>
+    <button class="purple" onclick="setTimerDuration(120)">Masa 2:00 Min</button>
+  </div>
+
+  <!-- KAWALAN PUSINGAN -->
+  <div class="section-title">🔄 KAWALAN PUSINGAN (AUTO-RESET HUKUMAN)</div>
   <div class="btn-grid">
     <button class="purple" onclick="setRound(1)">PUSINGAN 1</button>
     <button class="purple" onclick="setRound(2)">PUSINGAN 2</button>
     <button class="purple" style="grid-column: span 2;" onclick="setRound(3)">PUSINGAN 3</button>
   </div>
 
-  <div class="section-title">🚨 AMARAN / TEGURAN / PERINGATAN</div>
+  <!-- AMARAN / TEGURAN / PERINGATAN (TOGGLE) -->
+  <div class="section-title">🚨 HUKUMAN (TEKAN UNTUK ON / TEKAN LAGI UNTUK OFF)</div>
   <div class="btn-grid">
-    <button class="blue" onclick="triggerPenalty('blue', 'A1', 0)">BIRU: Amaran 1 (0pt)</button>
-    <button class="red" onclick="triggerPenalty('red', 'A1', 0)">MERAH: Amaran 1 (0pt)</button>
+    <button class="blue" id="btn_blue_A1" onclick="togglePenalty('blue', 'A1', 0)">BIRU: Amaran 1 (0pt)</button>
+    <button class="red" id="btn_red_A1" onclick="togglePenalty('red', 'A1', 0)">MERAH: Amaran 1 (0pt)</button>
     
-    <button class="blue" onclick="triggerPenalty('blue', 'A2', 0)">BIRU: Amaran 2 (0pt)</button>
-    <button class="red" onclick="triggerPenalty('red', 'A2', 0)">MERAH: Amaran 2 (0pt)</button>
+    <button class="blue" id="btn_blue_A2" onclick="togglePenalty('blue', 'A2', 0)">BIRU: Amaran 2 (0pt)</button>
+    <button class="red" id="btn_red_A2" onclick="togglePenalty('red', 'A2', 0)">MERAH: Amaran 2 (0pt)</button>
     
-    <button class="blue" onclick="triggerPenalty('blue', 'T1', -1)">BIRU: Teguran 1 (-1pt)</button>
-    <button class="red" onclick="triggerPenalty('red', 'T1', -1)">MERAH: Teguran 1 (-1pt)</button>
+    <button class="blue" id="btn_blue_T1" onclick="togglePenalty('blue', 'T1', -1)">BIRU: Teguran 1 (-1pt)</button>
+    <button class="red" id="btn_red_T1" onclick="togglePenalty('red', 'T1', -1)">MERAH: Teguran 1 (-1pt)</button>
     
-    <button class="blue" onclick="triggerPenalty('blue', 'T2', -2)">BIRU: Teguran 2 (-2pt)</button>
-    <button class="red" onclick="triggerPenalty('red', 'T2', -2)">MERAH: Teguran 2 (-2pt)</button>
+    <button class="blue" id="btn_blue_T2" onclick="togglePenalty('blue', 'T2', -2)">BIRU: Teguran 2 (-2pt)</button>
+    <button class="red" id="btn_red_T2" onclick="togglePenalty('red', 'T2', -2)">MERAH: Teguran 2 (-2pt)</button>
     
-    <button class="blue" onclick="triggerPenalty('blue', 'P1', -5)">BIRU: Peringatan 1 (-5pt)</button>
-    <button class="red" onclick="triggerPenalty('red', 'P1', -5)">MERAH: Peringatan 1 (-5pt)</button>
+    <button class="blue" id="btn_blue_P1" onclick="togglePenalty('blue', 'P1', -5)">BIRU: Peringatan 1 (-5pt)</button>
+    <button class="red" id="btn_red_P1" onclick="togglePenalty('red', 'P1', -5)">MERAH: Peringatan 1 (-5pt)</button>
     
-    <button class="blue" onclick="triggerPenalty('blue', 'P2', -10)">BIRU: Peringatan 2 (-10pt)</button>
-    <button class="red" onclick="triggerPenalty('red', 'P2', -10)">MERAH: Peringatan 2 (-10pt)</button>
+    <button class="blue" id="btn_blue_P2" onclick="togglePenalty('blue', 'P2', -10)">BIRU: Peringatan 2 (-10pt)</button>
+    <button class="red" id="btn_red_P2" onclick="togglePenalty('red', 'P2', -10)">MERAH: Peringatan 2 (-10pt)</button>
   </div>
 
-  <div class="section-title">PENGESAHAN JURI</div>
+  <!-- MANUALLY ADJUST SCORE (TAMBAH / TOLAK) -->
+  <div class="section-title">➕ / ➖ PELARASAN MARKAH MANUAL</div>
+  <div class="btn-grid">
+    <button class="blue-add" onclick="modifyScore('blue', 1)">BIRU +1</button>
+    <button class="red-add" onclick="modifyScore('red', 1)">MERAH +1</button>
+
+    <button class="blue-add" onclick="modifyScore('blue', 2)">BIRU +2</button>
+    <button class="red-add" onclick="modifyScore('red', 2)">MERAH +2</button>
+
+    <button class="blue-add" onclick="modifyScore('blue', 3)">BIRU +3</button>
+    <button class="red-add" onclick="modifyScore('red', 3)">MERAH +3</button>
+
+    <button class="btn-sub" onclick="modifyScore('blue', -1)">BIRU -1 (Tolak)</button>
+    <button class="btn-sub" onclick="modifyScore('red', -1)">MERAH -1 (Tolak)</button>
+
+    <button class="btn-sub" onclick="modifyScore('blue', -2)">BIRU -2 (Tolak)</button>
+    <button class="btn-sub" onclick="modifyScore('red', -2)">MERAH -2 (Tolak)</button>
+
+    <button class="btn-sub" onclick="modifyScore('blue', -3)">BIRU -3 (Tolak)</button>
+    <button class="btn-sub" onclick="modifyScore('red', -3)">MERAH -3 (Tolak)</button>
+  </div>
+
+  <div class="section-title">⚖️ PENGESAHAN JURI</div>
   <div class="btn-grid">
     <button class="blue" style="padding:12px;" onclick="requestVerification('JATUHAN', 'blue')">JATUHAN BIRU</button>
     <button class="red" style="padding:12px;" onclick="requestVerification('JATUHAN', 'red')">JATUHAN MERAH</button>
@@ -62,26 +104,43 @@
     <button class="red" style="padding:12px;" onclick="requestVerification('PELANGGARAN', 'red')">PELANGGARAN MERAH</button>
   </div>
 
-  <div class="section-title">➕ TAMBAH MARKAH (MANUAL)</div>
-  <div class="btn-grid">
-    <button class="blue-add" onclick="modifyScore('blue', 1)">Tambah BIRU +1</button>
-    <button class="red-add" onclick="modifyScore('red', 1)">Tambah MERAH +1</button>
-    <button class="blue-add" onclick="modifyScore('blue', 2)">Tambah BIRU +2</button>
-    <button class="red-add" onclick="modifyScore('red', 2)">Tambah MERAH +2</button>
-    <button class="blue-add" onclick="modifyScore('blue', 3)">Tambah BIRU +3</button>
-    <button class="red-add" onclick="modifyScore('red', 3)">Tambah MERAH +3</button>
-    <button class="blue-add" onclick="modifyScore('blue', 5)">Tambah BIRU +5</button>
-    <button class="red-add" onclick="modifyScore('red', 5)">Tambah MERAH +5</button>
-  </div>
-
-  <button class="grey" onclick="resetScore()">RESET MARKAH TOTAL</button>
+  <button class="grey" onclick="resetScore()">RESET KESELURUHAN MARKAH</button>
 
   <script>
     const socket = io();
+
+    function formatTime(seconds) {
+      const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+      const s = (seconds % 60).toString().padStart(2, '0');
+      return `${m}:${s}`;
+    }
+
     socket.on('updateState', (state) => {
       document.getElementById('blueScore').innerText = state.score.blue;
       document.getElementById('redScore').innerText = state.score.red;
       document.getElementById('roundText').innerText = "PUSINGAN " + state.round;
+
+      // Update Masa
+      const timerElem = document.getElementById('timerText');
+      timerElem.innerText = formatTime(state.timer.currentTime);
+      if (state.timer.isRunning) {
+        timerElem.classList.remove('paused');
+      } else {
+        timerElem.classList.add('paused');
+      }
+
+      // Sync Butang Penalti Active State
+      const penalties = ['A1', 'A2', 'T1', 'T2', 'P1', 'P2'];
+      ['blue', 'red'].forEach(color => {
+        penalties.forEach(p => {
+          const btn = document.getElementById(`btn_${color}_${p}`);
+          if (state.penalties[color][p]) {
+            btn.classList.add('active-p');
+          } else {
+            btn.classList.remove('active-p');
+          }
+        });
+      });
     });
     
     socket.on('verificationResult', (data) => {
@@ -89,8 +148,10 @@
     });
 
     function modifyScore(color, pts) { socket.emit('modifyScore', { color, pts }); }
-    function triggerPenalty(color, code, pts) { socket.emit('triggerPenalty', { color, code, pts }); }
+    function togglePenalty(color, code, pts) { socket.emit('togglePenalty', { color, code, pts }); }
     function setRound(r) { socket.emit('setRound', r); }
+    function controlTimer(action) { socket.emit('controlTimer', action); }
+    function setTimerDuration(seconds) { socket.emit('setTimerDuration', seconds); }
     function requestVerification(type, color) { 
       document.getElementById('verifyStatus').innerText = "Menunggu jawapan Juri...";
       socket.emit('requestVerification', { type, color }); 
