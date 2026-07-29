@@ -43,10 +43,10 @@ io.on('connection', (socket) => {
 
   socket.on('modifyScore', (data) => {
     const { color, pts } = data;
-    score[color] = Math.max(0, score[color] + pts);
+    score[color] = score[color] + pts; // Boleh jadi negatif tanpa had!
     io.emit('updateScore', score);
   });
-
+  
   socket.on('resetScore', () => {
     score = { red: 0, blue: 0 };
     io.emit('updateScore', score);
