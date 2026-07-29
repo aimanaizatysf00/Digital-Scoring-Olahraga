@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Panel Pengadil - Silat Olahraga</title>
+  <title>Panel Ketua Pengadil - Silat Olahraga</title>
   <script src="/socket.io/socket.io.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -38,52 +38,10 @@
     /* BUTTON GRIDS */
     .btn-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
     .btn-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .btn-grid-4 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
     .btn-grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
 
-    /* GRID HUKUMAN MATCHING SCOREBOARD TV (2 Kolum x 3 Baris) */
-    .penalties-grid-tv { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(3, 1fr); gap: 6px; height: 100%; }
-
-    /* KOTAK HUKUMAN ASAL (MALAP / OFF) */
-    .p-icon-box { 
-      background: #111; 
-      color: #555; 
-      border-radius: 6px; 
-      display: flex; 
-      justify-content: center; 
-      align-items: center; 
-      font-size: 18px; 
-      font-weight: bold; 
-      border: 2px solid #333; 
-      padding: 10px 4px;
-      cursor: pointer;
-      user-select: none;
-      transition: all 0.2s ease-in-out; 
-    }
-    .p-icon-box:active { transform: scale(0.95); }
-
-    /* WARNA ELEGAN BILA AKTIF (SAMA SEPERTI TV) */
-    .p-icon-box.active-amaran { 
-      background: #f1c40f !important; /* KUNING */
-      color: #000 !important; 
-      border-color: #fff !important; 
-      box-shadow: 0 0 12px rgba(241, 196, 15, 0.9); 
-    }
-
-    .p-icon-box.active-teguran { 
-      background: #e67e22 !important; /* OREN */
-      color: #fff !important; 
-      border-color: #fff !important; 
-      box-shadow: 0 0 12px rgba(230, 126, 34, 0.9); 
-    }
-
-    .p-icon-box.active-peringatan { 
-      background: #c0392b !important; /* MERAH */
-      color: #fff !important; 
-      border-color: #fff !important; 
-      box-shadow: 0 0 12px rgba(192, 57, 43, 0.9); 
-    }
-
-    /* ASAS BUTANG LAIN */
+    /* ASAS BUTANG */
     button { padding: 9px 4px; font-size: 11px; font-weight: bold; border-radius: 6px; border: 1px solid transparent; cursor: pointer; color: white; transition: all 0.15s ease-in-out; }
     button:active { transform: scale(0.97); }
 
@@ -107,6 +65,14 @@
     .red-add { background: #8e1519; border-color: #da3633; }
     .red-sub { background: #4e0a0c; border-color: #a8221f; color: #8b949e; }
 
+    /* STATUS HUKUMAN AKTIF (TOGGLE) */
+    button.active-p { 
+      background: #f85149 !important; 
+      border: 2px solid #f1c40f !important; 
+      color: white !important;
+      box-shadow: 0 0 8px rgba(248, 81, 73, 0.6);
+    }
+
     .btn-danger { background: #21262d; border-color: #da3633; color: #f85149; width: 100%; padding: 12px; margin-top: 10px; font-size: 12px; font-weight: 800; }
     .btn-danger:hover { background: #da3633; color: white; }
 
@@ -118,7 +84,7 @@
 
   <!-- HEADER -->
   <div class="header-card">
-    <div class="header-title">PANEL PENGADIL</div>
+    <div class="header-title">PANEL KETUA PENGADIL</div>
     <div class="score-display">
       <span style="color:#1f6feb;">BIRU: <span id="blueScore">0</span></span>
       <div>
@@ -172,34 +138,30 @@
     </div>
   </div>
 
-  <!-- PENETAP KOTAK HUKUMAN (GRID DISUAIKAN SAMA SEPERTI SCOREBOARD TV) -->
-  <div class="section-title">🚨 KOTAK HUKUMAN (TOGGLE SAMA SCOREBOARD TV)</div>
+  <!-- PENETAP KOTAK HUKUMAN MANUAL -->
+  <div class="section-title">🚨 PENETAP KOTAK HUKUMAN (MANUAL TOGGLE)</div>
   <div class="card-panel">
     <div class="two-col-container">
       <!-- BIRU -->
       <div class="side-box blue-box">
         <div class="box-title" style="color:#58a6ff;">🔵 HUKUMAN BIRU</div>
-        <div class="penalties-grid-tv">
-          <div class="p-icon-box" id="btn_blue_A1" title="Amaran 1" onclick="togglePenalty('blue', 'A1', 0)">👈</div>
-          <div class="p-icon-box" id="btn_blue_A2" title="Amaran 2" onclick="togglePenalty('blue', 'A2', 0)">👈✌️</div>
-          <div class="p-icon-box" id="btn_blue_T1" title="Teguran 1 (-1)" onclick="togglePenalty('blue', 'T1', -1)">☝️</div>
-          <div class="p-icon-box" id="btn_blue_T2" title="Teguran 2 (-2)" onclick="togglePenalty('blue', 'T2', -2)">✌️</div>
-          <div class="p-icon-box" id="btn_blue_P1" title="Peringatan 1 (-5)" onclick="togglePenalty('blue', 'P1', -5)">🙅‍♂️</div>
-          <div class="p-icon-box" id="btn_blue_P2" title="Peringatan 2 (-10)" onclick="togglePenalty('blue', 'P2', -10)">🙅‍♂️🙅‍♂️</div>
-        </div>
+        <button class="btn-blue" id="btn_blue_A1" onclick="togglePenalty('blue', 'A1', 0)">Amaran 1 👈</button>
+        <button class="btn-blue" id="btn_blue_A2" onclick="togglePenalty('blue', 'A2', 0)">Amaran 2 👈✌️</button>
+        <button class="btn-blue" id="btn_blue_T1" onclick="togglePenalty('blue', 'T1', -1)">Teguran 1 ☝️ (-1)</button>
+        <button class="btn-blue" id="btn_blue_T2" onclick="togglePenalty('blue', 'T2', -2)">Teguran 2 ✌️ (-2)</button>
+        <button class="btn-blue" id="btn_blue_P1" onclick="togglePenalty('blue', 'P1', -5)">Peringatan 1 🙅‍♂️ (-5)</button>
+        <button class="btn-blue" id="btn_blue_P2" onclick="togglePenalty('blue', 'P2', -10)">Peringatan 2 🙅‍♂️🙅‍♂️ (-10)</button>
       </div>
 
       <!-- MERAH -->
       <div class="side-box red-box">
         <div class="box-title" style="color:#f85149;">🔴 HUKUMAN MERAH</div>
-        <div class="penalties-grid-tv">
-          <div class="p-icon-box" id="btn_red_A1" title="Amaran 1" onclick="togglePenalty('red', 'A1', 0)">👈</div>
-          <div class="p-icon-box" id="btn_red_A2" title="Amaran 2" onclick="togglePenalty('red', 'A2', 0)">👈✌️</div>
-          <div class="p-icon-box" id="btn_red_T1" title="Teguran 1 (-1)" onclick="togglePenalty('red', 'T1', -1)">☝️</div>
-          <div class="p-icon-box" id="btn_red_T2" title="Teguran 2 (-2)" onclick="togglePenalty('red', 'T2', -2)">✌️</div>
-          <div class="p-icon-box" id="btn_red_P1" title="Peringatan 1 (-5)" onclick="togglePenalty('red', 'P1', -5)">🙅‍♂️</div>
-          <div class="p-icon-box" id="btn_red_P2" title="Peringatan 2 (-10)" onclick="togglePenalty('red', 'P2', -10)">🙅‍♂️🙅‍♂️</div>
-        </div>
+        <button class="btn-red" id="btn_red_A1" onclick="togglePenalty('red', 'A1', 0)">Amaran 1 👈</button>
+        <button class="btn-red" id="btn_red_A2" onclick="togglePenalty('red', 'A2', 0)">Amaran 2 👈✌️</button>
+        <button class="btn-red" id="btn_red_T1" onclick="togglePenalty('red', 'T1', -1)">Teguran 1 ☝️ (-1)</button>
+        <button class="btn-red" id="btn_red_T2" onclick="togglePenalty('red', 'T2', -2)">Teguran 2 ✌️ (-2)</button>
+        <button class="btn-red" id="btn_red_P1" onclick="togglePenalty('red', 'P1', -5)">Peringatan 1 🙅‍♂️ (-5)</button>
+        <button class="btn-red" id="btn_red_P2" onclick="togglePenalty('red', 'P2', -10)">Peringatan 2 🙅‍♂️🙅‍♂️ (-10)</button>
       </div>
     </div>
   </div>
@@ -299,26 +261,13 @@
       if (state.timer.isRunning) timerElem.classList.remove('paused');
       else timerElem.classList.add('paused');
 
-      // Configuration untuk penalti & kelas warna (Mengikut Scoreboard TV)
-      const penConfig = [
-        { code: 'A1', type: 'active-amaran' },
-        { code: 'A2', type: 'active-amaran' },
-        { code: 'T1', type: 'active-teguran' },
-        { code: 'T2', type: 'active-teguran' },
-        { code: 'P1', type: 'active-peringatan' },
-        { code: 'P2', type: 'active-peringatan' }
-      ];
-
-      // Sync status butang hukuman dengan warna dinamik TV
+      // Sync status butang hukuman aktif
+      const penalties = ['A1', 'A2', 'T1', 'T2', 'P1', 'P2'];
       ['blue', 'red'].forEach(color => {
-        penConfig.forEach(p => {
-          const btn = document.getElementById(`btn_${color}_${p.code}`);
-          if (btn) {
-            btn.classList.remove('active-amaran', 'active-teguran', 'active-peringatan');
-            if (state.penalties[color][p.code]) {
-              btn.classList.add(p.type);
-            }
-          }
+        penalties.forEach(p => {
+          const btn = document.getElementById(`btn_${color}_${p}`);
+          if (btn && state.penalties[color][p]) btn.classList.add('active-p');
+          else if (btn) btn.classList.remove('active-p');
         });
       });
     });
