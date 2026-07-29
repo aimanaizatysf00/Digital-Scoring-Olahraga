@@ -17,7 +17,8 @@ app.get('/juri', (req, res) => res.sendFile(__dirname + '/juri.html'));
 let state = {
   timer: { currentTime: 90, duration: 90, isRunning: false },
   round: 1,
-  matchDetails: {
+  // Disesuaikan nama 'matchInfo' supaya serasi terus dengan tv.html
+  matchInfo: {
     className: 'CLASS A',
     matchNo: '1',
     blueName: 'PESILAT BIRU',
@@ -60,13 +61,13 @@ function calculateWinner() {
   } else {
     if (blueDeductions < redDeductions) {
       winner = 'blue';
-      reason = `Markah Seri (${blueScore}-${redScore}), Biru Menang Hukuman Lebih Sedikit (-${blueDeductions} vs -${redDeductions})`;
+      reason = `Markah Seri (${blueScore}-${redScore}), Menang Hukuman Lebih Sedikit`;
     } else if (redDeductions < blueDeductions) {
       winner = 'red';
-      reason = `Markah Seri (${blueScore}-${redScore}), Merah Menang Hukuman Lebih Sedikit (-${redDeductions} vs -${blueDeductions})`;
+      reason = `Markah Seri (${blueScore}-${redScore}), Menang Hukuman Lebih Sedikit`;
     } else {
       winner = 'DRAW';
-      reason = `Markah (${blueScore}-${redScore}) & Hukuman (-${blueDeductions}) Sama Seri`;
+      reason = `Markah & Hukuman Sama Seri`;
     }
   }
 
@@ -74,9 +75,10 @@ function calculateWinner() {
 }
 
 io.on('connection', (socket) => {
+  // Hantar state terkini sebaik sahaja mana-mana peranti (TV/Juri/Pengadil) bersambung
   socket.emit('updateState', state);
 
-  // KAWALAN PEMASA (TIMER)
+  // --- KAWALAN PEMASA (TIMER) ---
   socket.on('controlTimer', (action) => {
     if (action === 'start' && !state.timer.isRunning) {
       state.timer.isRunning = true;
@@ -117,22 +119,38 @@ io.on('connection', (socket) => {
     io.emit('updateState', state);
   });
 
+  // --- KEMASKINI MAKLUMAT PESERTA / MATCH ---
   socket.on('updateMatchDetails', (data) => {
-    state.matchDetails = data;
-    addLog(`📝 Maklumat Perlawanan Dikemaskini (Match #${data.matchNo})`);
+    state.matchInfo = {
+      className: data.className || state.matchInfo.className,
+      matchNo: data.matchNo || state.matchInfo.matchNo,
+      blueName: data.blueName || state.matchInfo.blueName,
+      blueTeam: data.blueTeam || state.matchInfo.blueTeam,
+      redName: data.redName || state.matchInfo.redName,
+      redTeam: data.redTeam || state.matchInfo.redTeam
+    };
+    addLog(`📝 Maklumat Perlawanan Dikemaskini (Match #${state.matchInfo.matchNo})`);
     io.emit('updateState', state);
   });
 
-  // MENERIMA TEKANAN MARKAH DARI JURI (Sesuai dengan pressScore di juri.html)
+  // --- MASA TEKANAN JURI (Mengekalkan Animasi Nyalaan Lampu Juri TV) ---
   socket.on('pressScore', ({ juriId, color, points }) => {
     state.score[color] += points;
     if (state.score[color] < 0) state.score[color] = 0;
     
     addLog(`🎯 Markah [JURI ${juriId}] -> SUDUT ${color.toUpperCase()}: +${points}`);
+    
+    // Hantar signal visual lampu menyala khas untuk tv.html!
+    io.emit('juriPressSignal', {
+      juriId: juriId,
+      color: color,
+      points: points
+    });
+
     io.emit('updateState', state);
   });
 
-  // HUKUMAN & PENALTI
+  // --- HUKUMAN & PENALTI ---
   socket.on('togglePenalty', ({ color, code, pts }) => {
     const isActive = state.penalties[color][code];
     state.penalties[color][code] = !isActive;
@@ -154,7 +172,7 @@ io.on('connection', (socket) => {
     io.emit('updateState', state);
   });
 
-  // PELARASAN MARKAH MANUAL
+  // --- PELARASAN MARKAH MANUAL ---
   socket.on('modifyScore', ({ color, pts }) => {
     state.score[color] += pts;
     if (state.score[color] < 0) state.score[color] = 0;
@@ -162,7 +180,7 @@ io.on('connection', (socket) => {
     io.emit('updateState', state);
   });
 
-  // SEMAKAN UNDIAN JURI (VERIFICATION)
+  // --- SEMAKAN UNDIAN JURI (VERIFICATION) ---
   socket.on('requestVerification', (data) => {
     currentVerification = {
       type: data.type,
@@ -171,7 +189,6 @@ io.on('connection', (socket) => {
     };
     addLog(`🔍 Semakan Juri Dibuat: ${data.type} [${data.color.toUpperCase()}]`);
     io.emit('promptVerification', data);
-    io.emit('showVerificationOnTV', data);
   });
 
   socket.on('submitVerification', ({ juriId, approved }) => {
@@ -180,30 +197,37 @@ io.on('connection', (socket) => {
     currentVerification.votes[juriId] = approved;
     addLog(`🗳️ Undian Juri ${juriId}: ${approved ? 'SAH' : 'TAK SAH'}`);
 
-    // Jika sekurang-kurangnya 3 juri telah mengundi
     if (Object.keys(currentVerification.votes).length >= 3) {
       const yesVotes = Object.values(currentVerification.votes).filter(v => v === true).length;
-      const isAccepted = yesVotes >= 2; // Majoriti 2 daripada 3
+      const isAccepted = yesVotes >= 2;
 
-      addLog(`📢 Keputusan Undian ${currentVerification.type}: ${isAccepted ? 'DITERIMA (SAH)' : 'DITOLAK (TAK SAH)'}`);
+      const resultText = isAccepted ? `SAH (${yesVotes}/3)` : `TAK SAH (${3 - yesVotes}/3)`;
+
+      addLog(`📢 Keputusan Undian ${currentVerification.type}: ${resultText}`);
       
       io.emit('verificationResult', {
         type: currentVerification.type,
         color: currentVerification.color,
-        accepted: isAccepted
+        isApproved: isAccepted,
+        text: `${currentVerification.type} - ${resultText}`
       });
 
       currentVerification = null;
     }
   });
 
-  // PEMENANG & RESET
+  // --- PEMENANG, DISQUALIFIED & RESET ---
   socket.on('publishWinnerToTV', () => {
     const result = calculateWinner();
     state.winnerData = result;
     addLog(`🏆 PEMENANG DIISYTIHARKAN: ${result.winner.toUpperCase()} (${result.reason})`);
     io.emit('updateState', state);
     io.emit('showWinnerOnTV', result);
+  });
+
+  socket.on('disqualify', (color) => {
+    addLog(`❌ DISQUALIFIED: Sudut ${color.toUpperCase()} Dibatalkan`);
+    io.emit('disqualifiedAlert', color);
   });
 
   socket.on('resetScore', () => {
