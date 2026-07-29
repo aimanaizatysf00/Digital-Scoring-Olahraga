@@ -150,6 +150,18 @@ io.on('connection', (socket) => {
     io.emit('updateState', state);
   });
 
+  socket.on('addScoreFromMajority', (data) => {
+  // Update state skor dalam server
+  if (data.color === 'blue') {
+    gameState.score.blue += data.points;
+  } else if (data.color === 'red') {
+    gameState.score.red += data.points;
+  }
+  
+  // Hantar state terkini kepada semua skrin (TV & Controller)
+  io.emit('updateState', gameState);
+});
+  
   // --- HUKUMAN & PENALTI ---
   socket.on('togglePenalty', ({ color, code, pts }) => {
     const isActive = state.penalties[color][code];
