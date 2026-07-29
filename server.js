@@ -151,9 +151,11 @@ io.on('connection', (socket) => {
     verificationVotes.push(data);
     if (verificationVotes.length >= 3) {
       const sahCount = verificationVotes.filter(v => v.approved).length;
-      const xSahCount = verificationVotes.filter(v => !v.approved).length;
-      let isApproved = sahCount === 3;
-      let statusStr = isApproved ? `${currentVerifyTarget.type} ${currentVerifyTarget.color.toUpperCase()}: SAH ✅` : `${currentVerifyTarget.type} ${currentVerifyTarget.color.toUpperCase()}: TIDAK SAH ❌`;
+      let isApproved = sahCount >= 2; // Majoriti (2 daripada 3 juri)
+      let statusStr = isApproved 
+        ? `${currentVerifyTarget.type} ${currentVerifyTarget.color.toUpperCase()}: SAH ✅ (${sahCount}/3)` 
+        : `${currentVerifyTarget.type} ${currentVerifyTarget.color.toUpperCase()}: TIDAK SAH ❌ (${sahCount}/3)`;
+      
       io.emit('verificationResult', { text: statusStr, isApproved });
       verificationVotes = [];
     }
