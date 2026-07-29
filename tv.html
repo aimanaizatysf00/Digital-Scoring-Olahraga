@@ -1,145 +1,149 @@
 <!DOCTYPE html>
 <html lang="ms">
 <head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Scoreboard TV Silat</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paparan Skor TV - Silat Olahraga</title>
   <script src="/socket.io/socket.io.js"></script>
   <style>
-    * { box-sizing: border-box; font-family: 'Arial', sans-serif; }
-    body { background: #000; color: white; margin: 0; padding: 10px; height: 100vh; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Arial', sans-serif; }
+    body { background-color: #0d0d0d; color: white; overflow: hidden; height: 100vh; display: flex; flex-direction: column; justify-content: space-between; padding: 15px; }
 
-    /* HEADER NAMA PESERTA */
-    .names-header { display: flex; gap: 10px; height: 10vh; margin-bottom: 5px; }
-    .name-box { flex: 1; padding: 10px 15px; border-radius: 8px; display: flex; flex-direction: column; justify-content: center; font-weight: bold; text-transform: uppercase; }
-    .blue-name { background: #0080ff; color: #fff; }
-    .red-name { background: #d32f2f; color: #fff; text-align: right; }
-    .p-name { font-size: 1.8vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .p-team { font-size: 1.1vw; opacity: 0.9; }
+    /* HEADER: MAKLUMAT PERTANDINGAN */
+    .header { display: flex; justify-content: space-between; align-items: center; background: #1a1a1a; padding: 12px 25px; border-radius: 10px; border: 1px solid #333; }
+    .header-info { font-size: 24px; font-weight: bold; color: #f1c40f; text-transform: uppercase; }
+    .round-box { font-size: 28px; font-weight: 900; background: #333; padding: 6px 20px; border-radius: 8px; color: #fff; border: 2px solid #555; }
 
-    /* 3 KOTAK HEADER TEMPAT MASA/MATCH/ROUND */
-    .info-bar { display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 10px; height: 10vh; margin-bottom: 10px; }
-    .info-card { background: #1a252f; border: 2px solid #34495e; border-radius: 8px; display: flex; justify-content: center; align-items: center; font-weight: 900; color: #fff; text-transform: uppercase; }
-    .match-info { font-size: 2vw; color: #3498db; }
-    .timer-info { font-size: 3.5vw; color: #2ecc71; font-family: monospace; background: #000; border-color: #27ae60; }
-    .timer-info.paused { color: #e74c3c; border-color: #c0392b; }
-    .round-info { font-size: 2.2vw; color: #f1c40f; }
-
-    /* MAIN BOARD AREA */
-    .main-board { display: flex; gap: 10px; height: 75vh; }
-    .corner-side { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+    /* MAIN SCOREBOARD */
+    .scoreboard { display: grid; grid-template-columns: 1fr 200px 1fr; gap: 15px; height: calc(100vh - 160px); margin-top: 10px; }
+    .side-panel { border-radius: 15px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; position: relative; }
     
-    .score-and-penalties { flex: 1; display: flex; gap: 5px; }
-    
-    /* SKOR BOX */
-    .score-box { flex: 1.2; background: #111; border-radius: 10px; display: flex; justify-content: center; align-items: center; font-size: 17vw; font-weight: 900; line-height: 1; border: 4px solid #333; }
-    .blue-score { color: #3498db; background: #001f3f; border-color: #0080ff; }
-    .red-score { color: #e74c3c; background: #3d0000; border-color: #d32f2f; }
+    .blue-side { background: linear-gradient(135deg, #154360, #1b4f72); border: 3px solid #2980b9; }
+    .red-side { background: linear-gradient(135deg, #641e16, #78281f); border: 3px solid #c0392b; }
 
-    /* GRID SIMBOL HUKUMAN */
-    .penalties-grid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(3, 1fr); gap: 5px; }
-    .p-icon-box { background: #222; border-radius: 6px; display: flex; justify-content: center; align-items: center; font-size: 2vw; font-weight: bold; border: 2px solid #444; opacity: 0.25; transition: all 0.2s; }
+    .fighter-name { font-size: 32px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+    .fighter-team { font-size: 20px; color: #ccc; margin-top: 4px; text-transform: uppercase; }
     
-    /* Warna latar asal mengikut jenis hukuman */
-    .bg-black { background: #111; color: white; }
-    .bg-orange { background: #e67e22; color: white; }
-    .bg-red { background: #c0392b; color: white; }
+    .score-num { font-size: 130px; font-weight: 900; text-align: center; line-height: 1; margin: auto 0; text-shadow: 3px 3px 10px rgba(0,0,0,0.5); }
+
+    /* PENALTY BOXES (KOTAK HUKUMAN) */
+    .penalty-container { display: flex; gap: 8px; justify-content: center; margin-top: 10px; }
     
-    /* Bila Aktif */
-    .p-icon-box.active { opacity: 1; border-color: #fff; box-shadow: 0 0 15px rgba(255,255,255,0.8); transform: scale(1.02); }
+    .p-box { 
+      flex: 1; 
+      padding: 10px 4px; 
+      font-size: 14px; 
+      font-weight: bold; 
+      text-align: center; 
+      border-radius: 6px; 
+      background-color: #000000; /* Asal Hitam */
+      color: #555555;
+      border: 2px solid #333333;
+      transition: all 0.3s ease;
+    }
 
-    /* INDIKATOR JURI (3 KOTAK BAWAH SKOR) */
-    .juri-indicators { display: flex; gap: 5px; height: 5vh; }
-    .juri-box { flex: 1; background: #222; border: 2px solid #444; border-radius: 6px; display: flex; justify-content: center; align-items: center; font-size: 1vw; font-weight: bold; color: #777; }
-    .juri-box.active-blue { background: #0080ff; color: white; border-color: #fff; box-shadow: 0 0 10px #0080ff; }
-    .juri-box.active-red { background: #d32f2f; color: white; border-color: #fff; box-shadow: 0 0 10px #d32f2f; }
+    /* WARNA DINAMIK APABILA AKTIF */
+    .p-box.active-amaran { 
+      background-color: #f1c40f !important; /* Kuning */
+      color: #000000 !important; 
+      border-color: #f39c12 !important;
+      box-shadow: 0 0 12px rgba(241, 196, 15, 0.8);
+    }
 
-    /* POPUP VERIFICATION & DISQUALIFIED */
-    #tvOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); z-index: 999; flex-direction: column; justify-content: center; align-items: center; border: 10px solid #f1c40f; }
-    .overlay-title { font-size: 3vw; font-weight: 900; color: #f1c40f; }
-    .overlay-detail { font-size: 5vw; font-weight: bold; margin: 20px 0; }
-    .overlay-result { font-size: 4vw; font-weight: 900; padding: 15px 30px; border-radius: 15px; }
-    .result-sah { background: #2ecc71; color: white; }
-    .result-xsah { background: #e74c3c; color: white; }
-    .result-pending { background: #f39c12; color: black; }
+    .p-box.active-teguran { 
+      background-color: #e67e22 !important; /* Oren */
+      color: #ffffff !important; 
+      border-color: #d35400 !important;
+      box-shadow: 0 0 12px rgba(230, 126, 34, 0.8);
+    }
+
+    .p-box.active-peringatan { 
+      background-color: #e74c3c !important; /* Merah */
+      color: #ffffff !important; 
+      border-color: #c0392b !important;
+      box-shadow: 0 0 12px rgba(231, 76, 60, 0.8);
+    }
+
+    /* CENTER TIMER PANEL */
+    .center-panel { display: flex; flex-direction: column; justify-content: center; align-items: center; background: #181818; border-radius: 15px; border: 2px solid #333; }
+    .timer-display { font-size: 52px; font-weight: 900; font-family: monospace; color: #2ecc71; }
+    .timer-display.paused { color: #e74c3c; animation: blink 1s infinite; }
+
+    @keyframes blink { 50% { opacity: 0.4; } }
+
+    /* OVERLAY STATUS PENGESAHAN JURI */
+    #verifyOverlay {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center;
+      z-index: 999;
+    }
+    .verify-card { background: #222; border: 4px solid #f1c40f; padding: 40px; border-radius: 20px; text-align: center; }
+    .verify-text { font-size: 48px; font-weight: 900; color: #fff; }
   </style>
 </head>
 <body>
 
-  <!-- HEADER NAMA PESERTA -->
-  <div class="names-header">
-    <div class="name-box blue-name">
-      <div class="p-name" id="blueNameDisplay">PESILAT BIRU</div>
-      <div class="p-team" id="blueTeamDisplay">KONTINJEN BIRU</div>
-    </div>
-    <div class="name-box red-name">
-      <div class="p-name" id="redNameDisplay">PESILAT MERAH</div>
-      <div class="p-team" id="redTeamDisplay">KONTINJEN MERAH</div>
-    </div>
+  <!-- HEADER MAKLUMAT -->
+  <div class="header">
+    <div class="header-info" id="matchClass">CLASS A</div>
+    <div class="round-box" id="roundDisplay">ROUND 1</div>
+    <div class="header-info" id="matchNo">MATCH #1</div>
   </div>
 
-  <!-- 3 KOTAK INFO (CLASS/MATCH, TIMER, ROUND) -->
-  <div class="info-bar">
-    <div class="info-card match-info" id="matchClassDisplay">CLASS A | MATCH 1</div>
-    <div class="info-card timer-info" id="timerDisplay">01:30</div>
-    <div class="info-card round-info" id="roundDisplay">ROUND 1</div>
-  </div>
-
-  <!-- MAIN BOARD -->
-  <div class="main-board">
-    
+  <!-- SKOR UTAMA -->
+  <div class="scoreboard">
     <!-- SUDUT BIRU -->
-    <div class="corner-side">
-      <div class="score-and-penalties">
-        <!-- ISYARAT HUKUMAN BIRU -->
-        <div class="penalties-grid">
-          <div class="p-icon-box bg-black" id="blue_A1" title="Amaran 1">👈</div>
-          <div class="p-icon-box bg-black" id="blue_A2" title="Amaran 2">👈✌️</div>
-          <div class="p-icon-box bg-orange" id="blue_T1" title="Teguran 1 (-1)">☝️</div>
-          <div class="p-icon-box bg-black" id="blue_T2" title="Teguran 2 (-2)">✌️</div>
-          <div class="p-icon-box bg-red" id="blue_P1" title="Peringatan 1 (-5)">🙅‍♂️</div>
-          <div class="p-icon-box bg-red" id="blue_P2" title="Peringatan 2 (-10)">🙅‍♂️🙅‍♂️</div>
-        </div>
-        <!-- SKOR BIRU -->
-        <div class="score-box blue-score" id="blueScore">0</div>
+    <div class="side-panel blue-side">
+      <div>
+        <div class="fighter-name" id="blueName">PESILAT BIRU</div>
+        <div class="fighter-team" id="blueTeam">KONTINJEN BIRU</div>
       </div>
-      <!-- 3 KOTAK JURI BIRU -->
-      <div class="juri-indicators">
-        <div class="juri-box" id="blue_juri_1">JURI 1</div>
-        <div class="juri-box" id="blue_juri_2">JURI 2</div>
-        <div class="juri-box" id="blue_juri_3">JURI 3</div>
+      
+      <div class="score-num" id="blueScore">0</div>
+
+      <!-- KOTAK HUKUMAN BIRU -->
+      <div class="penalty-container">
+        <div class="p-box" id="tv_blue_A1">A1</div>
+        <div class="p-box" id="tv_blue_A2">A2</div>
+        <div class="p-box" id="tv_blue_T1">T1 (-1)</div>
+        <div class="p-box" id="tv_blue_T2">T2 (-2)</div>
+        <div class="p-box" id="tv_blue_P1">P1 (-5)</div>
+        <div class="p-box" id="tv_blue_P2">P2 (-10)</div>
       </div>
+    </div>
+
+    <!-- MASA (TENGAH) -->
+    <div class="center-panel">
+      <div style="font-size: 16px; color: #888; font-weight: bold; margin-bottom: 10px;">MASA</div>
+      <div class="timer-display" id="timerDisplay">01:30</div>
     </div>
 
     <!-- SUDUT MERAH -->
-    <div class="corner-side">
-      <div class="score-and-penalties">
-        <!-- SKOR MERAH -->
-        <div class="score-box red-score" id="redScore">0</div>
-        <!-- ISYARAT HUKUMAN MERAH -->
-        <div class="penalties-grid">
-          <div class="p-icon-box bg-black" id="red_A1" title="Amaran 1">👈</div>
-          <div class="p-icon-box bg-black" id="red_A2" title="Amaran 2">👈✌️</div>
-          <div class="p-icon-box bg-orange" id="red_T1" title="Teguran 1 (-1)">☝️</div>
-          <div class="p-icon-box bg-black" id="red_T2" title="Teguran 2 (-2)">✌️</div>
-          <div class="p-icon-box bg-red" id="red_P1" title="Peringatan 1 (-5)">🙅‍♂️</div>
-          <div class="p-icon-box bg-red" id="red_P2" title="Peringatan 2 (-10)">🙅‍♂️🙅‍♂️</div>
-        </div>
+    <div class="side-panel red-side">
+      <div>
+        <div class="fighter-name" id="redName">PESILAT MERAH</div>
+        <div class="fighter-team" id="redTeam">KONTINJEN MERAH</div>
       </div>
-      <!-- 3 KOTAK JURI MERAH -->
-      <div class="juri-indicators">
-        <div class="juri-box" id="red_juri_1">JURI 1</div>
-        <div class="juri-box" id="red_juri_2">JURI 2</div>
-        <div class="juri-box" id="red_juri_3">JURI 3</div>
+
+      <div class="score-num" id="redScore">0</div>
+
+      <!-- KOTAK HUKUMAN MERAH -->
+      <div class="penalty-container">
+        <div class="p-box" id="tv_red_A1">A1</div>
+        <div class="p-box" id="tv_red_A2">A2</div>
+        <div class="p-box" id="tv_red_T1">T1 (-1)</div>
+        <div class="p-box" id="tv_red_T2">T2 (-2)</div>
+        <div class="p-box" id="tv_red_P1">P1 (-5)</div>
+        <div class="p-box" id="tv_red_P2">P2 (-10)</div>
       </div>
     </div>
-
   </div>
 
-  <!-- POPUP VERIFICATION -->
-  <div id="tvOverlay">
-    <div class="overlay-title" id="tvVerifyTitle">⚠️ SEMAKAN PENGESAHAN JURI ⚠️</div>
-    <div class="overlay-detail" id="tvVerifyDetail">JATUHAN - SUDUT BIRU</div>
-    <div class="overlay-result result-pending" id="tvVerifyResult">MENUNGGU 3 JURI...</div>
+  <!-- OVERLAY KEPUTUSAN PENGESAHAN JURI -->
+  <div id="verifyOverlay">
+    <div class="verify-card">
+      <div class="verify-text" id="verifyCardText">JATUHAN BIRU: SAH ✅</div>
+    </div>
   </div>
 
   <script>
@@ -152,68 +156,66 @@
     }
 
     socket.on('updateState', (state) => {
-      // Update Nama & Match Info
-      document.getElementById('blueNameDisplay').innerText = state.matchInfo.blueName || 'PESILAT BIRU';
-      document.getElementById('blueTeamDisplay').innerText = state.matchInfo.blueTeam || 'KONTINJEN BIRU';
-      document.getElementById('redNameDisplay').innerText = state.matchInfo.redName || 'PESILAT MERAH';
-      document.getElementById('redTeamDisplay').innerText = state.matchInfo.redTeam || 'KONTINJEN MERAH';
-      document.getElementById('matchClassDisplay').innerText = `${state.matchInfo.className} | MATCH ${state.matchInfo.matchNo}`;
-
-      // Update Skor & Round
+      // Kemaskini Skor & Pusingan
       document.getElementById('blueScore').innerText = state.score.blue;
       document.getElementById('redScore').innerText = state.score.red;
       document.getElementById('roundDisplay').innerText = "ROUND " + state.round;
 
-      // Update Masa
+      // Kemaskini Masa
       const timerElem = document.getElementById('timerDisplay');
       timerElem.innerText = formatTime(state.timer.currentTime);
       if (state.timer.isRunning) timerElem.classList.remove('paused');
       else timerElem.classList.add('paused');
 
-      // Update Lampu Penalti
-      const penalties = ['A1', 'A2', 'T1', 'T2', 'P1', 'P2'];
-      ['blue', 'red'].forEach(color => {
-        penalties.forEach(p => {
-          const elem = document.getElementById(`${color}_${p}`);
-          if (state.penalties[color][p]) elem.classList.add('active');
-          else elem.classList.remove('active');
-        });
-      });
-    });
+      // Kemaskini Warna Kotak Hukuman Dinamik
+      updatePenaltyBox('blue', 'A1', state.penalties.blue.A1, 'active-amaran');
+      updatePenaltyBox('blue', 'A2', state.penalties.blue.A2, 'active-amaran');
+      updatePenaltyBox('blue', 'T1', state.penalties.blue.T1, 'active-teguran');
+      updatePenaltyBox('blue', 'T2', state.penalties.blue.T2, 'active-teguran');
+      updatePenaltyBox('blue', 'P1', state.penalties.blue.P1, 'active-peringatan');
+      updatePenaltyBox('blue', 'P2', state.penalties.blue.P2, 'active-peringatan');
 
-    // Nyalakan Lampu Indikator Tekanan Juri (1-3) Realtime
-    socket.on('juriPressSignal', (data) => {
-      const { juriId, color } = data;
-      const juriBox = document.getElementById(`${color}_juri_${juriId}`);
-      if (juriBox) {
-        const activeClass = color === 'blue' ? 'active-blue' : 'active-red';
-        juriBox.classList.add(activeClass);
-        setTimeout(() => { juriBox.classList.remove(activeClass); }, 1200);
+      updatePenaltyBox('red', 'A1', state.penalties.red.A1, 'active-amaran');
+      updatePenaltyBox('red', 'A2', state.penalties.red.A2, 'active-amaran');
+      updatePenaltyBox('red', 'T1', state.penalties.red.T1, 'active-teguran');
+      updatePenaltyBox('red', 'T2', state.penalties.red.T2, 'active-teguran');
+      updatePenaltyBox('red', 'P1', state.penalties.red.P1, 'active-peringatan');
+      updatePenaltyBox('red', 'P2', state.penalties.red.P2, 'active-peringatan');
+
+      // Kemaskini Maklumat Peserta jika ada
+      if(state.matchDetails) {
+        document.getElementById('matchClass').innerText = state.matchDetails.className || 'CLASS A';
+        document.getElementById('matchNo').innerText = 'MATCH #' + (state.matchDetails.matchNo || '1');
+        document.getElementById('blueName').innerText = state.matchDetails.blueName || 'PESILAT BIRU';
+        document.getElementById('redName').innerText = state.matchDetails.redName || 'PESILAT MERAH';
+        document.getElementById('blueTeam').innerText = state.matchDetails.blueTeam || 'KONTINJEN BIRU';
+        document.getElementById('redTeam').innerText = state.matchDetails.redTeam || 'KONTINJEN MERAH';
       }
     });
 
-    socket.on('promptVerification', (data) => {
-      document.getElementById('tvVerifyTitle').innerText = "⚠️ SEMAKAN PENGESAHAN JURI ⚠️";
-      document.getElementById('tvVerifyDetail').innerText = data.type + ' - SUDUT ' + data.color.toUpperCase();
-      document.getElementById('tvVerifyResult').innerText = "MENUNGGU 3 JURI...";
-      document.getElementById('tvVerifyResult').className = "overlay-result result-pending";
-      document.getElementById('tvOverlay').style.display = 'flex';
-    });
+    function updatePenaltyBox(color, code, isActive, activeClass) {
+      const elem = document.getElementById(`tv_${color}_${code}`);
+      if (elem) {
+        // Buang semua class aktif lama
+        elem.classList.remove('active-amaran', 'active-teguran', 'active-peringatan');
+        
+        // Tambah class aktif baru mengikut jenis penalti jika aktif
+        if (isActive) {
+          elem.classList.add(activeClass);
+        }
+      }
+    }
 
+    // Paparan Hasil Pengesahan Juri
     socket.on('verificationResult', (data) => {
-      const resElem = document.getElementById('tvVerifyResult');
-      resElem.innerText = data.text;
-      resElem.className = "overlay-result " + (data.isApproved ? "result-sah" : "result-xsah");
-      setTimeout(() => { document.getElementById('tvOverlay').style.display = 'none'; }, 4000);
-    });
+      const overlay = document.getElementById('verifyOverlay');
+      const textElem = document.getElementById('verifyCardText');
+      textElem.innerText = data.text;
+      overlay.style.display = 'flex';
 
-    socket.on('disqualifiedAlert', (color) => {
-      document.getElementById('tvVerifyTitle').innerText = "❌ DISQUALIFIED / BATAL ❌";
-      document.getElementById('tvVerifyDetail').innerText = "SUDUT " + color.toUpperCase() + " DIBATALKAN!";
-      document.getElementById('tvVerifyResult').innerText = "PESILAT BATAL (6 AMARAN)";
-      document.getElementById('tvVerifyResult').className = "overlay-result result-xsah";
-      document.getElementById('tvOverlay').style.display = 'flex';
-      setTimeout(() => { document.getElementById('tvOverlay').style.display = 'none'; }, 6000);
+      setTimeout(() => {
+        overlay.style.display = 'none';
+      }, 4000);
     });
   </script>
 </body>
