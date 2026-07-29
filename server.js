@@ -34,7 +34,7 @@ let timerInterval = null;
 let juriVotes = {}; 
 let verificationVotes = [];
 let currentVerifyTarget = { type: '', color: '' };
-const TIME_WINDOW = 1500;
+const TIME_WINDOW = 1500; // 1.5 saat tetingkap masa penekanan serentak
 
 function startTimer() {
   if (timerInterval) clearInterval(timerInterval);
@@ -66,50 +66,46 @@ io.on('connection', (socket) => {
     io.emit('updateState', state);
   });
 
-  // SIMPANAN SEMENTARA TEKANAN JURI
-let juriVotes = {};
-const TIME_WINDOW = 1500; // Sela masa 1.5 saat untuk juri lain sahkan markah
+  // PENERIMAAN MARKAH DARI PANEL JURI
+  socket.on('pressScore', (data) => {
+    const now = Date.now();
+    const juriId = String(data.juriId);
+    const { color, points } = data;
 
-socket.on('pressScore', (data) => {
-  const now = Date.now();
-  const juriId = String(data.juriId);
-  const { color, points } = data;
+    // 1. Hantar isyarat untuk menyalakan lampu indikator Juri di TV
+    const juriElementId = `${color}_juri_${juriId}`;
+    io.emit('juriPressSignal', { 
+      elementId: juriElementId,
+      color: color,
+      juriId: juriId,
+      points: points 
+    });
 
-  // 1. HANTAR ISYARAT UNTUK NYALAKAN LAMPU JURI DI TV
-  // Kita pastikan format juriKey padan dengan ID HTML (cth: blue_juri_1)
-  const juriElementId = `${color}_juri_${juriId}`;
-  io.emit('juriPressSignal', { 
-    elementId: juriElementId,
-    color: color,
-    juriId: juriId,
-    points: points 
+    // 2. Semakan keputusan majoriti (2 daripada 3 Juri)
+    const key = `${color}_${points}`;
+    if (!juriVotes[key]) juriVotes[key] = [];
+
+    // Tapis undian yang telah tamat tempoh 1.5 saat
+    juriVotes[key] = juriVotes[key].filter(v => (now - v.time) <= TIME_WINDOW);
+
+    // Kemaskini masa sekiranya Juri sama menekan butang berturut-turut
+    const existingVoteIndex = juriVotes[key].findIndex(v => v.juriId === juriId);
+    if (existingVoteIndex !== -1) {
+      juriVotes[key][existingVoteIndex].time = now;
+    } else {
+      juriVotes[key].push({ juriId, time: now });
+    }
+
+    // Kira jumlah Juri unik yang menekan
+    const uniqueJudges = new Set(juriVotes[key].map(v => v.juriId));
+
+    // Jika sekurang-kurangnya 2 Juri menekan dalam tetingkap 1.5s
+    if (uniqueJudges.size >= 2) {
+      state.score[color] += Number(points);
+      juriVotes[key] = []; // Reset pusingan undian
+      io.emit('updateState', state); // Kemaskini skrin TV
+    }
   });
-
-  // 2. PEMPROSESAN MARKAH MAJORITI (2 DARIPADA 3 JURI)
-  const key = `${color}_${points}`;
-  if (!juriVotes[key]) juriVotes[key] = [];
-
-  // Buang rekod undian yang sudah tamat tempoh TIME_WINDOW
-  juriVotes[key] = juriVotes[key].filter(v => (now - v.time) <= TIME_WINDOW);
-
-  // Semak jika Juri yang sama tekan berkali-kali, kemaskini masa sahaja
-  const existingVoteIndex = juriVotes[key].findIndex(v => v.juriId === juriId);
-  if (existingVoteIndex !== -1) {
-    juriVotes[key][existingVoteIndex].time = now;
-  } else {
-    juriVotes[key].push({ juriId, time: now });
-  }
-
-  // Dapatkan jumlah Juri berbeza yang menekan butang sama
-  const uniqueJudges = new Set(juriVotes[key].map(v => v.juriId));
-
-  // Jika sekurang-kurangnya 2 Juri tekan perkara yang sama
-  if (uniqueJudges.size >= 2) {
-    state.score[color] += Number(points); // Tambah markah
-    juriVotes[key] = [];                   // Reset semula pusingan undian ini
-    io.emit('updateState', state);         // Kemaskini skor pada skrin TV
-  }
-});
 
   socket.on('modifyScore', (data) => {
     state.score[data.color] += data.pts; 
@@ -174,7 +170,7 @@ socket.on('pressScore', (data) => {
     verificationVotes.push(data);
     if (verificationVotes.length >= 3) {
       const sahCount = verificationVotes.filter(v => v.approved).length;
-      let isApproved = sahCount >= 2; // Majoriti 2 daripada 3 juri
+      let isApproved = sahCount >= 2;
       const { type, color } = currentVerifyTarget;
 
       let statusStr = "";
@@ -182,7 +178,6 @@ socket.on('pressScore', (data) => {
       if (isApproved) {
         statusStr = `${type} ${color.toUpperCase()}: SAH ✅ (${sahCount}/3)`;
 
-        // LOGIK AUTOMATIK PENALTI & POTONGAN MARKAH SELEPAS SAH
         if (type === 'AMARAN') {
           if (!state.penalties[color].A1) {
             state.penalties[color].A1 = true;
@@ -193,23 +188,22 @@ socket.on('pressScore', (data) => {
         else if (type === 'TEGURAN') {
           if (!state.penalties[color].T1) {
             state.penalties[color].T1 = true;
-            state.score[color] -= 1; // Auto tolak 1 mata
+            state.score[color] -= 1;
           } else if (!state.penalties[color].T2) {
             state.penalties[color].T2 = true;
-            state.score[color] -= 2; // Auto tolak 2 mata
+            state.score[color] -= 2;
           }
         } 
         else if (type === 'PERINGATAN') {
           if (!state.penalties[color].P1) {
             state.penalties[color].P1 = true;
-            state.score[color] -= 5; // Auto tolak 5 mata
+            state.score[color] -= 5;
           } else if (!state.penalties[color].P2) {
             state.penalties[color].P2 = true;
-            state.score[color] -= 10; // Auto tolak 10 mata
+            state.score[color] -= 10;
           }
         }
 
-        // Semakan jika cukup 6 hukuman (Disqualified / Batal)
         const p = state.penalties[color];
         if (p.A1 && p.A2 && p.T1 && p.T2 && p.P1 && p.P2) {
           io.emit('disqualifiedAlert', color);
@@ -219,7 +213,6 @@ socket.on('pressScore', (data) => {
         statusStr = `${type} ${color.toUpperCase()}: TIDAK SAH ❌ (${sahCount}/3)`;
       }
 
-      // Kemas kini negeri (state) ke semua skrin
       io.emit('updateState', state);
       io.emit('verificationResult', { text: statusStr, isApproved });
       verificationVotes = [];
