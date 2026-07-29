@@ -363,7 +363,6 @@
         redTeam: document.getElementById('redTeam').value
       };
       socket.emit('updateMatchDetails', data);
-      alert('Maklumat perlawanan berjaya dikemaskini!');
     }
 
     function togglePenalty(color, code, pts) { socket.emit('togglePenalty', { color, code, pts }); }
@@ -371,11 +370,10 @@
 
     function requestVerification(type, color) {
       socket.emit('requestVerification', { type, color });
-      alert(`Dihantar: Semakan ${type} Sudut${color.toUpperCase()}`);
     }
 
     function downloadLog() {
-      if (currentLogs.length === 0) return alert('Tiada log!');
+      if (currentLogs.length === 0) return;
       const matchNo = document.getElementById('matchNo').value || '1';
       const logContent = `=== REKOD LOG PERLAWANAN SILAT (MATCH ${matchNo}) ===\n\n` + currentLogs.slice().reverse().join('\n');
       const blob = new Blob([logContent], { type: 'text/plain;charset=utf-8' });
