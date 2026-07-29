@@ -35,18 +35,27 @@ let juriVotes = {};
 let verificationVotes = [];
 let currentVerifyTarget = { type: '', color: '' };
 const TIME_WINDOW = 1500; // 1.5 saat tetingkap masa penekanan serentak
- 
-function startTimer() {  // Di dalam fungsi countdown timer anda (contoh):
+
+// FUNGSI MULA PEMASA (HANYA DIDEKLARASIKAN SEKALI)
+function startTimer() {
+  // Bersihkan interval lama jika ada (elak pemasa jadi laju)
+  if (timerInterval) clearInterval(timerInterval);
+
+  state.timer.isRunning = true;
+  io.emit('updateState', state);
+
   timerInterval = setInterval(() => {
     if (state.timer.currentTime > 0) {
       state.timer.currentTime--;
       io.emit('updateState', state);
     } else {
+      // MASA TAMAT (00:00)
       clearInterval(timerInterval);
+      timerInterval = null;
       state.timer.isRunning = false;
       io.emit('updateState', state);
 
-      // KIRA PEMENANG APABILA MASA TAMAT (00:00)
+      // KIRA PEMENANG
       let winner = 'DRAW';
       if (state.score.blue > state.score.red) {
         winner = 'blue';
@@ -62,6 +71,94 @@ function startTimer() {  // Di dalam fungsi countdown timer anda (contoh):
       });
     }
   }, 1000);
+}
+
+// FUNGSI HENTI PEMASA (PAUSE)
+function pauseTimer() {
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+  state.timer.isRunning = false;
+  io.emit('updateState', state);
+}
+
+// INTERAKSI SOCKET
+io.on('connection', (socket) => {
+  // Hantar data terkini bila ada sambungan baharu
+  socket.emit('updateState', state);
+
+  // LISTEN KAWALAN MASA DARI PANEL PENGADIL
+  socket.on('controlTimer', (action) => {
+    if (action === 'start') {
+      if (state.timer.currentTime > 0 && !state.timer.isRunning) {
+        startTimer();
+      }
+    } else if (action === 'pause') {
+      pauseTimer();
+    }
+  });
+
+  // MENETAPKAN MASA DURATION (1:30 ATAU 2:00)
+  socket.on('setTimerDuration', (seconds) => {
+    pauseTimer();
+    state.timer.duration = seconds;
+    state.timer.currentTime = seconds;
+    io.emit('updateState', state);
+  });
+
+  // KAWALAN PUSINGAN (ROUND)
+  socket.on('setRound', (r) => {
+    pauseTimer();
+    state.round = r;
+    state.timer.currentTime = state.timer.duration; // Reset masa mengikut ketetapan pusingan
+    io.emit('updateState', state);
+  });
+
+  // LISTENERS LAIN...
+  socket.on('updateMatchDetails', (data) => {
+    state.matchInfo = data;
+    io.emit('updateState', state);
+  });
+
+  socket.on('modifyScore', ({ color, pts }) => {
+    state.score[color] += pts;
+    if (state.score[color] < 0) state.score[color] = 0;
+    io.emit('updateState', state);
+  });
+
+  socket.on('togglePenalty', ({ color, code, pts }) => {
+    const isCurrentlyActive = state.penalties[color][code];
+    state.penalties[color][code] = !isCurrentlyActive;
+
+    if (pts !== 0) {
+      if (!isCurrentlyActive) {
+        state.score[color] += pts;
+      } else {
+        state.score[color] -= pts;
+      }
+      if (state.score[color] < 0) state.score[color] = 0;
+    }
+    io.emit('updateState', state);
+  });
+
+  socket.on('publishWinnerToTV', (data) => {
+    io.emit('showWinnerOnTV', data);
+  });
+
+  socket.on('resetScore', () => {
+    pauseTimer();
+    state.score = { blue: 0, red: 0 };
+    state.round = 1;
+    state.timer.currentTime = 90;
+    state.timer.duration = 90;
+    state.penalties = {
+      blue: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false },
+      red:  { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false }
+    };
+    io.emit('updateState', state);
+  });
+});
 }
 
 // Tambah Listener untuk Pengadil pamerkan keputusan ke TV
