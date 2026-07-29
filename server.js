@@ -7,20 +7,22 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
-// PENGELAYARAN FAIL HTML
 app.get('/tv', (req, res) => res.sendFile(path.join(__dirname, 'tv.html')));
 app.get('/pengadil', (req, res) => res.sendFile(path.join(__dirname, 'pengadil.html')));
 app.get('/juri', (req, res) => res.sendFile(path.join(__dirname, 'juri.html')));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'tv.html')));
 
-// DATA STATE UTAMA
 let state = {
   score: { red: 0, blue: 0 },
   round: 1,
-  timer: {
-    duration: 90,     // Default 1:30 (90 saat)
-    currentTime: 90,  
-    isRunning: false
+  timer: { duration: 90, currentTime: 90, isRunning: false },
+  matchInfo: {
+    className: 'CLASS A',
+    matchNo: '1',
+    blueName: 'PESILAT BIRU',
+    redName: 'PESILAT MERAH',
+    blueTeam: 'KONTINJEN BIRU',
+    redTeam: 'KONTINJEN MERAH'
   },
   penalties: {
     blue: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false },
@@ -34,11 +36,9 @@ let verificationVotes = [];
 let currentVerifyTarget = { type: '', color: '' };
 const TIME_WINDOW = 1500;
 
-// LOGIK PEMASA (TIMER)
 function startTimer() {
   if (timerInterval) clearInterval(timerInterval);
   state.timer.isRunning = true;
-  
   timerInterval = setInterval(() => {
     if (state.timer.currentTime > 0) {
       state.timer.currentTime -= 1;
@@ -60,12 +60,21 @@ function pauseTimer() {
 io.on('connection', (socket) => {
   socket.emit('updateState', state);
 
-  // MATA DARI JURI (3/3 SAMA)
+  // MAKLUMAT MATCH & PESERTA
+  socket.on('updateMatchDetails', (data) => {
+    state.matchInfo = data;
+    io.emit('updateState', state);
+  });
+
+  // TEKANAN JURI (3 JURI)
   socket.on('pressScore', (data) => {
     const now = Date.now();
     const { juriId, color, points } = data;
+
+    // Hantar isyarat nyalakan lampu juri ke skrin TV
+    io.emit('juriPressSignal', { juriId, color });
+
     const key = color + '_' + points;
-    
     if (!juriVotes[key]) juriVotes[key] = [];
     juriVotes[key].push({ juriId, time: now });
     
@@ -79,38 +88,24 @@ io.on('connection', (socket) => {
     }
   });
 
-  // TAMBAH / TOLAK MARKAH MANUAL
   socket.on('modifyScore', (data) => {
-    const { color, pts } = data;
-    state.score[color] += pts; 
+    state.score[data.color] += data.pts; 
     io.emit('updateState', state);
   });
 
-  // TOGGLE HUKUMAN / PENALTI (ON / OFF)
   socket.on('togglePenalty', (data) => {
     const { color, code, pts } = data;
-    const isCurrentlyActive = state.penalties[color][code];
-
-    if (!isCurrentlyActive) {
-      // AKTIFKAN PENALTI -> TOLAK MARKAH
-      state.penalties[color][code] = true;
-      state.score[color] += pts; 
-    } else {
-      // PADAMKAN PENALTI -> PULANGKAN MARKAH BALIK
-      state.penalties[color][code] = false;
-      state.score[color] -= pts; 
-    }
-
+    const isActive = state.penalties[color][code];
+    state.penalties[color][code] = !isActive;
+    state.score[color] += isActive ? -pts : pts;
     io.emit('updateState', state);
 
-    // Semak Disqualified (Semua 6 Aktif)
     const p = state.penalties[color];
     if (p.A1 && p.A2 && p.T1 && p.T2 && p.P1 && p.P2) {
       io.emit('disqualifiedAlert', color);
     }
   });
 
-  // KAWALAN TIMER
   socket.on('controlTimer', (action) => {
     if (action === 'start') startTimer();
     if (action === 'pause') pauseTimer();
@@ -123,11 +118,10 @@ io.on('connection', (socket) => {
     io.emit('updateState', state);
   });
 
-  // TUKAR PUSINGAN (AUTO-RESET PENALTI & TIMER)
   socket.on('setRound', (r) => {
     pauseTimer();
     state.round = r;
-    state.timer.currentTime = state.timer.duration; // Reset masa mengikut tetapan duration
+    state.timer.currentTime = state.timer.duration;
     state.penalties = {
       blue: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false },
       red: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false }
@@ -135,24 +129,16 @@ io.on('connection', (socket) => {
     io.emit('updateState', state);
   });
 
-  // RESET KESELURUHAN
   socket.on('resetScore', () => {
     pauseTimer();
-    state = {
-      score: { red: 0, blue: 0 },
-      round: 1,
-      timer: {
-        duration: 90,
-        currentTime: 90,
-        isRunning: false
-      },
-      penalties: {
-        blue: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false },
-        red: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false }
-      }
+    state.score = { red: 0, blue: 0 };
+    state.round = 1;
+    state.timer.currentTime = state.timer.duration;
+    state.penalties = {
+      blue: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false },
+      red: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false }
     };
     io.emit('updateState', state);
-    io.emit('verificationResult', { text: 'SISTEM DIRESET', isApproved: false });
   });
 
   socket.on('requestVerification', (data) => {
@@ -163,26 +149,12 @@ io.on('connection', (socket) => {
 
   socket.on('submitVerification', (data) => {
     verificationVotes.push(data);
-    
     if (verificationVotes.length >= 3) {
-      const sahCount = verificationVotes.filter(v => v.approved === true).length;
-      const xSahCount = verificationVotes.filter(v => v.approved === false).length;
-      
-      let isApproved = false;
-      let statusStr = "";
-
-      if (sahCount === 3) {
-        isApproved = true;
-        statusStr = currentVerifyTarget.type + " " + currentVerifyTarget.color.toUpperCase() + ": SAH ✅";
-      } else if (xSahCount === 3) {
-        isApproved = false;
-        statusStr = currentVerifyTarget.type + " " + currentVerifyTarget.color.toUpperCase() + ": TIDAK SAH ❌";
-      } else {
-        isApproved = false;
-        statusStr = currentVerifyTarget.type + " " + currentVerifyTarget.color.toUpperCase() + ": TIDAK SEBULAT SUARA";
-      }
-
-      io.emit('verificationResult', { text: statusStr, isApproved: isApproved });
+      const sahCount = verificationVotes.filter(v => v.approved).length;
+      const xSahCount = verificationVotes.filter(v => !v.approved).length;
+      let isApproved = sahCount === 3;
+      let statusStr = isApproved ? `${currentVerifyTarget.type} ${currentVerifyTarget.color.toUpperCase()}: SAH ✅` : `${currentVerifyTarget.type} ${currentVerifyTarget.color.toUpperCase()}: TIDAK SAH ❌`;
+      io.emit('verificationResult', { text: statusStr, isApproved });
       verificationVotes = [];
     }
   });
