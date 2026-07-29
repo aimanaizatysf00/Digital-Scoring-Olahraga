@@ -6,7 +6,7 @@
   <title>Panel Pengadil - Silat Olahraga</title>
   <script src="/socket.io/socket.io.js"></script>
   <style>
-    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
     body { background: #121212; color: #ffffff; margin: 0; padding: 15px; }
 
     h2, h3, h4 { margin: 5px 0; text-align: center; }
@@ -14,7 +14,7 @@
     .card { background: #1e1e1e; border-radius: 10px; padding: 15px; border: 1px solid #333; margin-bottom: 15px; }
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
 
-    .btn { padding: 10px 16px; font-size: 0.95rem; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; transition: 0.2s; text-transform: uppercase; }
+    .btn { padding: 10px 16px; font-size: 0.95rem; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; text-transform: uppercase; }
     .btn:active { transform: scale(0.96); }
 
     .btn-success { background: #2ecc71; color: #fff; }
@@ -93,22 +93,18 @@
   <!-- 2. MAKLUMAT PERLAWANAN -->
   <div class="card">
     <h3>📝 MAKLUMAT PERLAWANAN</h3>
-    
     <div class="form-row">
       <input type="text" id="className" placeholder="Class (contoh: CLASS A)" value="CLASS A">
       <input type="text" id="matchNo" placeholder="Match No (contoh: 1)" value="1">
     </div>
-
     <div class="form-row">
       <input type="text" id="blueName" placeholder="Pesilat Sudut Biru" value="PESILAT BIRU">
       <input type="text" id="redName" placeholder="Pesilat Sudut Merah" value="PESILAT MERAH">
     </div>
-
     <div class="form-row">
       <input type="text" id="blueTeam" placeholder="Kontinjen Sudut Biru" value="KONTINJEN BIRU">
       <input type="text" id="redTeam" placeholder="Kontinjen Sudut Merah" value="KONTINJEN MERAH">
     </div>
-
     <div style="text-align: center; margin-top: 10px;">
       <button class="btn btn-info" style="width: 100%;" onclick="updateMatchDetails()">🔄 KEMASKINI MAKLUMAT</button>
     </div>
@@ -116,7 +112,6 @@
 
   <!-- BIRU & MERAH -->
   <div class="grid-2">
-    
     <!-- SUDUT BIRU -->
     <div class="card blue-corner">
       <div class="corner-header blue-header">SUDUT BIRU</div>
@@ -124,12 +119,12 @@
 
       <h4 style="margin-top: 15px;">⚠️ HUKUMAN & PENALTI</h4>
       <div class="penalty-grid">
-        <button class="btn-penalty" id="btn_blue_A1" onclick="togglePenalty('blue', 'A1', 0, 'active-amaran')">👈 Amaran 1</button>
-        <button class="btn-penalty" id="btn_blue_A2" onclick="togglePenalty('blue', 'A2', 0, 'active-amaran')">👈✌️ Amaran 2</button>
-        <button class="btn-penalty" id="btn_blue_T1" onclick="togglePenalty('blue', 'T1', -1, 'active-teguran')">☝️ Teguran 1 (-1)</button>
-        <button class="btn-penalty" id="btn_blue_T2" onclick="togglePenalty('blue', 'T2', -2, 'active-teguran')">✌️ Teguran 2 (-2)</button>
-        <button class="btn-penalty" id="btn_blue_P1" onclick="togglePenalty('blue', 'P1', -5, 'active-peringatan')">🙅‍♂️ Peringatan 1 (-5)</button>
-        <button class="btn-penalty" id="btn_blue_P2" onclick="togglePenalty('blue', 'P2', -10, 'active-peringatan')">🙅‍♂️🙅‍♂️ Peringatan 2 (-10)</button>
+        <button class="btn-penalty" id="btn_blue_A1" onclick="togglePenalty('blue', 'A1', 0)">👈 Amaran 1</button>
+        <button class="btn-penalty" id="btn_blue_A2" onclick="togglePenalty('blue', 'A2', 0)">👈✌️ Amaran 2</button>
+        <button class="btn-penalty" id="btn_blue_T1" onclick="togglePenalty('blue', 'T1', -1)">☝️ Teguran 1 (-1)</button>
+        <button class="btn-penalty" id="btn_blue_T2" onclick="togglePenalty('blue', 'T2', -2)">✌️ Teguran 2 (-2)</button>
+        <button class="btn-penalty" id="btn_blue_P1" onclick="togglePenalty('blue', 'P1', -5)">🙅‍♂️ Peringatan 1 (-5)</button>
+        <button class="btn-penalty" id="btn_blue_P2" onclick="togglePenalty('blue', 'P2', -10)">🙅‍♂️🙅‍♂️ Peringatan 2 (-10)</button>
       </div>
 
       <h4>✏️ PELARASAN MARKAH MANUAL</h4>
@@ -140,7 +135,7 @@
         <button class="btn btn-info btn-sm" onclick="modifyScore('blue', 5)">+5</button>
         <button class="btn btn-info btn-sm" onclick="modifyScore('blue', 10)">+10</button>
       </div>
-      <div class="manual-score-grid">
+      <div class="manual-score-grid" style="margin-top: 5px;">
         <button class="btn btn-danger btn-sm" onclick="modifyScore('blue', -1)">-1</button>
         <button class="btn btn-danger btn-sm" onclick="modifyScore('blue', -2)">-2</button>
         <button class="btn btn-danger btn-sm" onclick="modifyScore('blue', -3)">-3</button>
@@ -164,12 +159,12 @@
 
       <h4 style="margin-top: 15px;">⚠️ HUKUMAN & PENALTI</h4>
       <div class="penalty-grid">
-        <button class="btn-penalty" id="btn_red_A1" onclick="togglePenalty('red', 'A1', 0, 'active-amaran')">👈 Amaran 1</button>
-        <button class="btn-penalty" id="btn_red_A2" onclick="togglePenalty('red', 'A2', 0, 'active-amaran')">👈✌️ Amaran 2</button>
-        <button class="btn-penalty" id="btn_red_T1" onclick="togglePenalty('red', 'T1', -1, 'active-teguran')">☝️ Teguran 1 (-1)</button>
-        <button class="btn-penalty" id="btn_red_T2" onclick="togglePenalty('red', 'T2', -2, 'active-teguran')">✌️ Teguran 2 (-2)</button>
-        <button class="btn-penalty" id="btn_red_P1" onclick="togglePenalty('red', 'P1', -5, 'active-peringatan')">🙅‍♂️ Peringatan 1 (-5)</button>
-        <button class="btn-penalty" id="btn_red_P2" onclick="togglePenalty('red', 'P2', -10, 'active-peringatan')">🙅‍♂️🙅‍♂️ Peringatan 2 (-10)</button>
+        <button class="btn-penalty" id="btn_red_A1" onclick="togglePenalty('red', 'A1', 0)">👈 Amaran 1</button>
+        <button class="btn-penalty" id="btn_red_A2" onclick="togglePenalty('red', 'A2', 0)">👈✌️ Amaran 2</button>
+        <button class="btn-penalty" id="btn_red_T1" onclick="togglePenalty('red', 'T1', -1)">☝️ Teguran 1 (-1)</button>
+        <button class="btn-penalty" id="btn_red_T2" onclick="togglePenalty('red', 'T2', -2)">✌️ Teguran 2 (-2)</button>
+        <button class="btn-penalty" id="btn_red_P1" onclick="togglePenalty('red', 'P1', -5)">🙅‍♂️ Peringatan 1 (-5)</button>
+        <button class="btn-penalty" id="btn_red_P2" onclick="togglePenalty('red', 'P2', -10)">🙅‍♂️🙅‍♂️ Peringatan 2 (-10)</button>
       </div>
 
       <h4>✏️ PELARASAN MARKAH MANUAL</h4>
@@ -180,7 +175,7 @@
         <button class="btn btn-info btn-sm" onclick="modifyScore('red', 5)">+5</button>
         <button class="btn btn-info btn-sm" onclick="modifyScore('red', 10)">+10</button>
       </div>
-      <div class="manual-score-grid">
+      <div class="manual-score-grid" style="margin-top: 5px;">
         <button class="btn btn-danger btn-sm" onclick="modifyScore('red', -1)">-1</button>
         <button class="btn btn-danger btn-sm" onclick="modifyScore('red', -2)">-2</button>
         <button class="btn btn-danger btn-sm" onclick="modifyScore('red', -3)">-3</button>
@@ -196,13 +191,12 @@
         <button class="btn btn-warning btn-sm" onclick="requestVerification('PERINGATAN', 'red')">Peringatan</button>
       </div>
     </div>
-
   </div>
 
   <!-- LOG REAL-TIME -->
   <div class="card" style="margin-top: 15px;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-      <h3 style="margin: 0;">📜 KOTAK LOG PERLAWANAN REAL-TIME</h3>
+      <h3 style="margin: 0;">📜 LOG PERLAWANAN REAL-TIME</h3>
       <button class="btn btn-dark" onclick="downloadLog()" style="font-size: 0.8rem; padding: 6px 12px;">📥 MUAT TURUN LOG (.TXT)</button>
     </div>
     <div class="log-box" id="logList"></div>
@@ -257,7 +251,7 @@
       document.getElementById('blueScore').innerText = state.score.blue;
       document.getElementById('redScore').innerText = state.score.red;
 
-      // Status Hukuman
+      // Status Warna Butang Hukuman
       const penConfig = [
         { code: 'A1', type: 'active-amaran' },
         { code: 'A2', type: 'active-amaran' },
@@ -279,7 +273,7 @@
         });
       });
 
-      // SEMAK BILA MASA TAMAT (00:00) UNTUK POP-UP
+      // SEMAK BILA MASA = 00:00 UNTUK POP-UP
       if (state.timer.currentTime === 0 && !state.timer.isRunning && !hasPoppedForRound) {
         hasPoppedForRound = true;
         showRoundEndModal(state);
@@ -296,7 +290,7 @@
       }
     });
 
-    // FUNGSI POP-UP DENGAN 2 PILIHAN / 1 PILIHAN
+    // FUNGSI POP-UP MODAL (2 PILIHAN DUA ROUND AWAL, 1 PILIHAN ROUND 3)
     function showRoundEndModal(state) {
       const overlay = document.getElementById('pengadilOverlay');
       const popTitle = document.getElementById('popTitle');
@@ -377,7 +371,7 @@
 
     function requestVerification(type, color) {
       socket.emit('requestVerification', { type, color });
-      alert(`Dihantar: Semakan ${type} Sudut ${color.toUpperCase()}`);
+      alert(`Dihantar: Semakan ${type} Sudut${color.toUpperCase()}`);
     }
 
     function downloadLog() {
