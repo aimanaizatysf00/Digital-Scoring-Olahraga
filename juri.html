@@ -11,7 +11,7 @@
       margin: 0; 
       padding: 0; 
       font-family: 'Segoe UI', Roboto, sans-serif; 
-      user-select: none; /* Elak teks terpilih bila tekan laju-laju */
+      user-select: none;
       -webkit-user-select: none;
     }
 
@@ -22,7 +22,7 @@
       display: flex; 
       flex-direction: column; 
       padding: 10px;
-      overflow: hidden; /* Elak skrin ter-scroll */
+      overflow: hidden;
     }
 
     /* HEADER PILIHAN ID JURI & STATUS MASA */
@@ -55,25 +55,19 @@
       color: #8b949e; 
     }
 
-    /* LAYOUT UTAMA BUTANG MARKAH (RESPONSIF) */
+    /* LAYOUT UTAMA BUTANG MARKAH */
     .main-container { 
       flex: 1; 
       display: flex; 
       gap: 10px; 
     }
 
-    /* DEFAULT: ORIENTASI PORTRAIT (MENEGAK) - Atas ke Bawah */
     @media (orientation: portrait) {
-      .main-container {
-        flex-direction: column;
-      }
+      .main-container { flex-direction: column; }
     }
 
-    /* ORIENTASI LANDSCAPE (MELINTANG) - Kiri ke Kanan */
     @media (orientation: landscape) {
-      .main-container {
-        flex-direction: row;
-      }
+      .main-container { flex-direction: row; }
     }
 
     /* KOTAK SUDUT BIRU & MERAH */
@@ -142,15 +136,12 @@
       margin-top: 2px;
     }
 
-    /* WARNA BUTANG BIRU */
     .btn-blue-1 { background: #0056b3; }
     .btn-blue-2 { background: #0080ff; }
-
-    /* WARNA BUTANG MERAH */
     .btn-red-1 { background: #9a0000; }
     .btn-red-2 { background: #d32f2f; }
 
-    /* POPUP OVERLAY VERIFICATION (UNDIAN JURI) */
+    /* POPUP OVERLAY VERIFICATION */
     #verifyOverlay { 
       display: none; 
       position: fixed; 
@@ -209,7 +200,7 @@
     <div class="status-info" id="matchStatus">R1 | 01:30</div>
   </div>
 
-  <!-- MAIN CONTAINER (OTOMATIK PORTRAIT / LANDSCAPE) -->
+  <!-- MAIN CONTAINER -->
   <div class="main-container">
     
     <!-- SUDUT BIRU -->
@@ -244,7 +235,7 @@
 
   </div>
 
-  <!-- POPUP SEMAKAN / UNDIAN VERIFICATION -->
+  <!-- POPUP SEMAKAN VERIFICATION -->
   <div id="verifyOverlay">
     <div class="overlay-card">
       <div class="overlay-title">⚠️ UNDIAN SEMAKAN JURI ⚠️</div>
@@ -265,34 +256,33 @@
       return `${m}:${s}`;
     }
 
-    // TERIMA KEMASKINI STATE DARI SERVER
     socket.on('updateState', (state) => {
       const timeStr = formatTime(state.timer.currentTime);
       document.getElementById('matchStatus').innerText = `ROUND ${state.round} | ${timeStr}`;
     });
 
     // HANTAR MARKAH & SIGNAL TEKANAN KEPADA SERVER
-    function sendScore(color, pts) {
+    function sendScore(color, points) {
       const juriId = document.getElementById('juriIdSelect').value;
       
-      // Hantar isyarat bahawa Juri X telah menekan butang (untuk lampu indikator di TV)
-      socket.emit('juriPress', { juriId, color, pts });
+      // Menggunakan event 'pressScore' & parameter 'points' yang sepadan dengan server.js
+      socket.emit('pressScore', { juriId, color, points });
     }
 
-    // TERIMA NOTIFIKASI PERMOHONAN PENGESAHAN (VERIFICATION)
     socket.on('promptVerification', (data) => {
       document.getElementById('verifyText').innerText = `${data.type} - SUDUT ${data.color.toUpperCase()}`;
       document.getElementById('verifyOverlay').style.display = 'flex';
     });
 
-    // HANTAR UNDIAN JURI (SAH / TAK SAH)
+    // HANTAR UNDIAN JURI
     function sendVote(isApproved) {
       const juriId = document.getElementById('juriIdSelect').value;
-      socket.emit('submitVote', { juriId, isApproved });
+      
+      // Diselaraskan dengan event 'submitVerification' pada server.js
+      socket.emit('submitVerification', { juriId, approved: isApproved });
       document.getElementById('verifyOverlay').style.display = 'none';
     }
 
-    // TUTUP OVERLAY APABILA KEPUTUSAN KELUAR
     socket.on('verificationResult', () => {
       document.getElementById('verifyOverlay').style.display = 'none';
     });
