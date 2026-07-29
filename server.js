@@ -17,16 +17,45 @@ app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'tv.html')));
 let state = {
   score: { red: 0, blue: 0 },
   round: 1,
+  timer: {
+    duration: 90,     // Default 1:30 (90 saat)
+    currentTime: 90,  
+    isRunning: false
+  },
   penalties: {
     blue: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false },
     red: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false }
   }
 };
 
+let timerInterval = null;
 let juriVotes = {}; 
 let verificationVotes = [];
 let currentVerifyTarget = { type: '', color: '' };
 const TIME_WINDOW = 1500;
+
+// LOGIK PEMASA (TIMER)
+function startTimer() {
+  if (timerInterval) clearInterval(timerInterval);
+  state.timer.isRunning = true;
+  
+  timerInterval = setInterval(() => {
+    if (state.timer.currentTime > 0) {
+      state.timer.currentTime -= 1;
+      io.emit('updateState', state);
+    } else {
+      clearInterval(timerInterval);
+      state.timer.isRunning = false;
+      io.emit('updateState', state);
+    }
+  }, 1000);
+}
+
+function pauseTimer() {
+  if (timerInterval) clearInterval(timerInterval);
+  state.timer.isRunning = false;
+  io.emit('updateState', state);
+}
 
 io.on('connection', (socket) => {
   socket.emit('updateState', state);
@@ -57,28 +86,48 @@ io.on('connection', (socket) => {
     io.emit('updateState', state);
   });
 
-  // TEKAN HUKUMAN / PENALTI (AMARAN, TEGURAN, PERINGATAN)
-  socket.on('triggerPenalty', (data) => {
+  // TOGGLE HUKUMAN / PENALTI (ON / OFF)
+  socket.on('togglePenalty', (data) => {
     const { color, code, pts } = data;
-    
-    // Switch status ON/OFF
-    state.penalties[color][code] = true;
-    if (pts !== 0) {
-      state.score[color] += pts; // Penolakan markah automatik
+    const isCurrentlyActive = state.penalties[color][code];
+
+    if (!isCurrentlyActive) {
+      // AKTIFKAN PENALTI -> TOLAK MARKAH
+      state.penalties[color][code] = true;
+      state.score[color] += pts; 
+    } else {
+      // PADAMKAN PENALTI -> PULANGKAN MARKAH BALIK
+      state.penalties[color][code] = false;
+      state.score[color] -= pts; 
     }
 
     io.emit('updateState', state);
 
-    // Semak jika kesemua 6 penalti dah kena
+    // Semak Disqualified (Semua 6 Aktif)
     const p = state.penalties[color];
     if (p.A1 && p.A2 && p.T1 && p.T2 && p.P1 && p.P2) {
       io.emit('disqualifiedAlert', color);
     }
   });
 
-  // TUKAR PUSINGAN (AUTO RESET PENALTI)
+  // KAWALAN TIMER
+  socket.on('controlTimer', (action) => {
+    if (action === 'start') startTimer();
+    if (action === 'pause') pauseTimer();
+  });
+
+  socket.on('setTimerDuration', (seconds) => {
+    pauseTimer();
+    state.timer.duration = seconds;
+    state.timer.currentTime = seconds;
+    io.emit('updateState', state);
+  });
+
+  // TUKAR PUSINGAN (AUTO-RESET PENALTI & TIMER)
   socket.on('setRound', (r) => {
+    pauseTimer();
     state.round = r;
+    state.timer.currentTime = state.timer.duration; // Reset masa mengikut tetapan duration
     state.penalties = {
       blue: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false },
       red: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false }
@@ -88,9 +137,15 @@ io.on('connection', (socket) => {
 
   // RESET KESELURUHAN
   socket.on('resetScore', () => {
+    pauseTimer();
     state = {
       score: { red: 0, blue: 0 },
       round: 1,
+      timer: {
+        duration: 90,
+        currentTime: 90,
+        isRunning: false
+      },
       penalties: {
         blue: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false },
         red: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false }
