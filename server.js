@@ -6,20 +6,16 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// Supaya fail html/css/js diproses tanpa error
 app.use(express.static(__dirname));
 
-// Routing asas supaya tak keluar error "Cannot GET /"
+// Routing Fail Web
 app.get('/', (req, res) => res.sendFile(__dirname + '/pengadil.html'));
 app.get('/tv', (req, res) => res.sendFile(__dirname + '/tv.html'));
+app.get('/juri', (req, res) => res.sendFile(__dirname + '/juri.html'));
 
 // KEADAAN ASAL SISTEM (STATE)
 let state = {
-  timer: {
-    currentTime: 90,
-    duration: 90,
-    isRunning: false
-  },
+  timer: { currentTime: 90, duration: 90, isRunning: false },
   round: 1,
   matchDetails: {
     className: 'CLASS A',
@@ -39,10 +35,11 @@ let state = {
 };
 
 let timerInterval = null;
+let currentVerification = null; // Menyimpan status undian juri
 
 function addLog(text) {
   const timestamp = new Date().toLocaleTimeString('ms-MY', { hour12: false });
-  io.emit('newLog', `[${timestamp}]${text}`);
+  io.emit('newLog', `[${timestamp}] ${text}`);
 }
 
 function calculateWinner() {
@@ -79,6 +76,7 @@ function calculateWinner() {
 io.on('connection', (socket) => {
   socket.emit('updateState', state);
 
+  // KAWALAN PEMASA (TIMER)
   socket.on('controlTimer', (action) => {
     if (action === 'start' && !state.timer.isRunning) {
       state.timer.isRunning = true;
@@ -125,6 +123,16 @@ io.on('connection', (socket) => {
     io.emit('updateState', state);
   });
 
+  // MENERIMA TEKANAN MARKAH DARI JURI (Sesuai dengan pressScore di juri.html)
+  socket.on('pressScore', ({ juriId, color, points }) => {
+    state.score[color] += points;
+    if (state.score[color] < 0) state.score[color] = 0;
+    
+    addLog(`🎯 Markah [JURI ${juriId}] -> SUDUT ${color.toUpperCase()}: +${points}`);
+    io.emit('updateState', state);
+  });
+
+  // HUKUMAN & PENALTI
   socket.on('togglePenalty', ({ color, code, pts }) => {
     const isActive = state.penalties[color][code];
     state.penalties[color][code] = !isActive;
@@ -137,7 +145,7 @@ io.on('connection', (socket) => {
     } else {
       state.score[color] -= pts;
       state.penaltyPoints[color] -= penaltyVal;
-      addLog(`🔄 Hukuman Dibatalkan [${color.toUpperCase()}]:${code}`);
+      addLog(`🔄 Hukuman Dibatalkan [${color.toUpperCase()}]: ${code}`);
     }
 
     if (state.score[color] < 0) state.score[color] = 0;
@@ -146,6 +154,7 @@ io.on('connection', (socket) => {
     io.emit('updateState', state);
   });
 
+  // PELARASAN MARKAH MANUAL
   socket.on('modifyScore', ({ color, pts }) => {
     state.score[color] += pts;
     if (state.score[color] < 0) state.score[color] = 0;
@@ -153,11 +162,42 @@ io.on('connection', (socket) => {
     io.emit('updateState', state);
   });
 
+  // SEMAKAN UNDIAN JURI (VERIFICATION)
   socket.on('requestVerification', (data) => {
+    currentVerification = {
+      type: data.type,
+      color: data.color,
+      votes: {}
+    };
     addLog(`🔍 Semakan Juri Dibuat: ${data.type} [${data.color.toUpperCase()}]`);
+    io.emit('promptVerification', data);
     io.emit('showVerificationOnTV', data);
   });
 
+  socket.on('submitVerification', ({ juriId, approved }) => {
+    if (!currentVerification) return;
+    
+    currentVerification.votes[juriId] = approved;
+    addLog(`🗳️ Undian Juri ${juriId}: ${approved ? 'SAH' : 'TAK SAH'}`);
+
+    // Jika sekurang-kurangnya 3 juri telah mengundi
+    if (Object.keys(currentVerification.votes).length >= 3) {
+      const yesVotes = Object.values(currentVerification.votes).filter(v => v === true).length;
+      const isAccepted = yesVotes >= 2; // Majoriti 2 daripada 3
+
+      addLog(`📢 Keputusan Undian ${currentVerification.type}: ${isAccepted ? 'DITERIMA (SAH)' : 'DITOLAK (TAK SAH)'}`);
+      
+      io.emit('verificationResult', {
+        type: currentVerification.type,
+        color: currentVerification.color,
+        accepted: isAccepted
+      });
+
+      currentVerification = null;
+    }
+  });
+
+  // PEMENANG & RESET
   socket.on('publishWinnerToTV', () => {
     const result = calculateWinner();
     state.winnerData = result;
@@ -178,6 +218,7 @@ io.on('connection', (socket) => {
       red: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false }
     };
     state.winnerData = null;
+    currentVerification = null;
     addLog(`🔄 Sistem Direset Keseluruhan`);
     io.emit('updateState', state);
   });
