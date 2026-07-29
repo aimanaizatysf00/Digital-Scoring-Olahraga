@@ -13,16 +13,25 @@ app.get('/pengadil', (req, res) => res.sendFile(path.join(__dirname, 'pengadil.h
 app.get('/juri', (req, res) => res.sendFile(path.join(__dirname, 'juri.html')));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'tv.html')));
 
-// LOGIK MATA & UNDIAN
-let score = { red: 0, blue: 0 };
+// DATA STATE UTAMA
+let state = {
+  score: { red: 0, blue: 0 },
+  round: 1,
+  penalties: {
+    blue: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false },
+    red: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false }
+  }
+};
+
 let juriVotes = {}; 
 let verificationVotes = [];
 let currentVerifyTarget = { type: '', color: '' };
 const TIME_WINDOW = 1500;
 
 io.on('connection', (socket) => {
-  socket.emit('updateScore', score);
+  socket.emit('updateState', state);
 
+  // MATA DARI JURI (3/3 SAMA)
   socket.on('pressScore', (data) => {
     const now = Date.now();
     const { juriId, color, points } = data;
@@ -35,22 +44,60 @@ io.on('connection', (socket) => {
     const uniqueJudges = new Set(juriVotes[key].map(v => v.juriId));
 
     if (uniqueJudges.size >= 3) {
-      score[color] += points;
+      state.score[color] += points;
       juriVotes[key] = [];
-      io.emit('updateScore', score);
+      io.emit('updateState', state);
     }
   });
 
+  // TAMBAH / TOLAK MARKAH MANUAL
   socket.on('modifyScore', (data) => {
     const { color, pts } = data;
-    score[color] = score[color] + pts; // Boleh jadi negatif tanpa had!
-    io.emit('updateScore', score);
+    state.score[color] += pts; 
+    io.emit('updateState', state);
   });
-  
+
+  // TEKAN HUKUMAN / PENALTI (AMARAN, TEGURAN, PERINGATAN)
+  socket.on('triggerPenalty', (data) => {
+    const { color, code, pts } = data;
+    
+    // Switch status ON/OFF
+    state.penalties[color][code] = true;
+    if (pts !== 0) {
+      state.score[color] += pts; // Penolakan markah automatik
+    }
+
+    io.emit('updateState', state);
+
+    // Semak jika kesemua 6 penalti dah kena
+    const p = state.penalties[color];
+    if (p.A1 && p.A2 && p.T1 && p.T2 && p.P1 && p.P2) {
+      io.emit('disqualifiedAlert', color);
+    }
+  });
+
+  // TUKAR PUSINGAN (AUTO RESET PENALTI)
+  socket.on('setRound', (r) => {
+    state.round = r;
+    state.penalties = {
+      blue: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false },
+      red: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false }
+    };
+    io.emit('updateState', state);
+  });
+
+  // RESET KESELURUHAN
   socket.on('resetScore', () => {
-    score = { red: 0, blue: 0 };
-    io.emit('updateScore', score);
-    io.emit('verificationResult', { text: 'MARKAH DIRESET', isApproved: false });
+    state = {
+      score: { red: 0, blue: 0 },
+      round: 1,
+      penalties: {
+        blue: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false },
+        red: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false }
+      }
+    };
+    io.emit('updateState', state);
+    io.emit('verificationResult', { text: 'SISTEM DIRESET', isApproved: false });
   });
 
   socket.on('requestVerification', (data) => {
@@ -77,7 +124,7 @@ io.on('connection', (socket) => {
         statusStr = currentVerifyTarget.type + " " + currentVerifyTarget.color.toUpperCase() + ": TIDAK SAH ❌";
       } else {
         isApproved = false;
-        statusStr = currentVerifyTarget.type + " " + currentVerifyTarget.color.toUpperCase() + ": TIDAK SEBULAT SUARA (Sah: " + sahCount + ", X-Sah: " + xSahCount + ")";
+        statusStr = currentVerifyTarget.type + " " + currentVerifyTarget.color.toUpperCase() + ": TIDAK SEBULAT SUARA";
       }
 
       io.emit('verificationResult', { text: statusStr, isApproved: isApproved });
