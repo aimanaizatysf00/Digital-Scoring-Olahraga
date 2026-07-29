@@ -66,27 +66,50 @@ io.on('connection', (socket) => {
     io.emit('updateState', state);
   });
 
-  // TEKANAN JURI (3 JURI)
-  socket.on('pressScore', (data) => {
-    const now = Date.now();
-    const { juriId, color, points } = data;
+  // SIMPANAN SEMENTARA TEKANAN JURI
+let juriVotes = {};
+const TIME_WINDOW = 1500; // Sela masa 1.5 saat untuk juri lain sahkan markah
 
-    // Hantar isyarat nyalakan lampu juri ke skrin TV
-    io.emit('juriPressSignal', { juriId, color });
+socket.on('pressScore', (data) => {
+  const now = Date.now();
+  const juriId = String(data.juriId);
+  const { color, points } = data;
 
-    const key = color + '_' + points;
-    if (!juriVotes[key]) juriVotes[key] = [];
-    juriVotes[key].push({ juriId, time: now });
-    
-    juriVotes[key] = juriVotes[key].filter(v => (now - v.time) <= TIME_WINDOW);
-    const uniqueJudges = new Set(juriVotes[key].map(v => v.juriId));
-
-    if (uniqueJudges.size >= 3) {
-      state.score[color] += points;
-      juriVotes[key] = [];
-      io.emit('updateState', state);
-    }
+  // 1. HANTAR ISYARAT UNTUK NYALAKAN LAMPU JURI DI TV
+  // Kita pastikan format juriKey padan dengan ID HTML (cth: blue_juri_1)
+  const juriElementId = `${color}_juri_${juriId}`;
+  io.emit('juriPressSignal', { 
+    elementId: juriElementId,
+    color: color,
+    juriId: juriId,
+    points: points 
   });
+
+  // 2. PEMPROSESAN MARKAH MAJORITI (2 DARIPADA 3 JURI)
+  const key = `${color}_${points}`;
+  if (!juriVotes[key]) juriVotes[key] = [];
+
+  // Buang rekod undian yang sudah tamat tempoh TIME_WINDOW
+  juriVotes[key] = juriVotes[key].filter(v => (now - v.time) <= TIME_WINDOW);
+
+  // Semak jika Juri yang sama tekan berkali-kali, kemaskini masa sahaja
+  const existingVoteIndex = juriVotes[key].findIndex(v => v.juriId === juriId);
+  if (existingVoteIndex !== -1) {
+    juriVotes[key][existingVoteIndex].time = now;
+  } else {
+    juriVotes[key].push({ juriId, time: now });
+  }
+
+  // Dapatkan jumlah Juri berbeza yang menekan butang sama
+  const uniqueJudges = new Set(juriVotes[key].map(v => v.juriId));
+
+  // Jika sekurang-kurangnya 2 Juri tekan perkara yang sama
+  if (uniqueJudges.size >= 2) {
+    state.score[color] += Number(points); // Tambah markah
+    juriVotes[key] = [];                   // Reset semula pusingan undian ini
+    io.emit('updateState', state);         // Kemaskini skor pada skrin TV
+  }
+});
 
   socket.on('modifyScore', (data) => {
     state.score[data.color] += data.pts; 
