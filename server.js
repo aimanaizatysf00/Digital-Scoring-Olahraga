@@ -133,22 +133,53 @@ io.on('connection', (socket) => {
     io.emit('updateState', state);
   });
 
-  // --- MASA TEKANAN JURI (Mengekalkan Animasi Nyalaan Lampu Juri TV) ---
-  socket.on('pressScore', ({ juriId, color, points }) => {
-    state.score[color] += points;
-    if (state.score[color] < 0) state.score[color] = 0;
-    
-    addLog(`🎯 Markah [JURI ${juriId}] -> SUDUT ${color.toUpperCase()}: +${points}`);
-    
-    // Hantar signal visual lampu menyala khas untuk tv.html!
-    io.emit('juriPressSignal', {
-      juriId: juriId,
-      color: color,
-      points: points
-    });
+  // --- LOGIK MAJORITI JURI (BERATURAN MASA / TIMED BUFFER) ---
+let pendingScores = []; // Menyimpan rekod tekanan juri sementara
+const VERIFICATION_WINDOW = 1500; // Sela masa kelulusan (1.5 saat)
 
+socket.on('pressScore', ({ juriId, color, points }) => {
+  const now = Date.now();
+
+  // 1. Hantar signal visual lampu ke TV/Pengadil (supaya tahu Juri mana yang tekan)
+  io.emit('juriPressSignal', { juriId, color, points });
+  addLog(`🔘 [JURI ${juriId}] menekan +${points} (${color.toUpperCase()})`);
+
+  // 2. Buang rekod tekanan juri yang sudah melepasi tempoh 1.5 saat
+  pendingScores = pendingScores.filter(item => now - item.timestamp <= VERIFICATION_WINDOW);
+
+  // 3. Semak sama ada juri yang sama sudah menekan jenis markah ini dalam buffer
+  const existingIndex = pendingScores.findIndex(
+    item => item.juriId === juriId && item.color === color && item.points === points
+  );
+
+  if (existingIndex !== -1) {
+    // Kemaskini masa jika juri menekan butang yang sama semula
+    pendingScores[existingIndex].timestamp = now;
+  } else {
+    // Masukkan rekod baru ke dalam buffer
+    pendingScores.push({ juriId, color, points, timestamp: now });
+  }
+
+  // 4. Cari padanan (Berapa juri unik menekan color & points yang sama)
+  const matchingPresses = pendingScores.filter(
+    item => item.color === color && item.points === points
+  );
+
+  // 5. Syarat: Jika 2 atau lebih juri bersetuju
+  if (matchingPresses.length >= 2) {
+    // Tambah markah rasmi
+    state.score[color] += points;
+    addLog(`✅ MATA SAH! +${points} untuk SUDUT ${color.toUpperCase()} (Disokong oleh ${matchingPresses.length} Juri)`);
+
+    // Bersihkan buffer bagi kategori ini supaya markah tidak bertambah secara berulang (double count)
+    pendingScores = pendingScores.filter(
+      item => !(item.color === color && item.points === points)
+    );
+
+    // Kemaskini keadaan papan markah (TV & Pengadil)
     io.emit('updateState', state);
-  });
+  }
+});
 
   // --- HUKUMAN & PENALTI ---
   socket.on('togglePenalty', ({ color, code, pts }) => {
