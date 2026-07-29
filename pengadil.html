@@ -56,6 +56,29 @@
     .log-box { background: #0a0a0a; color: #00ffcc; font-family: monospace; height: 160px; overflow-y: auto; padding: 10px; border-radius: 6px; border: 1px solid #333; font-size: 0.85rem; }
     .log-box p { margin: 3px 0; border-bottom: 1px solid #1a1a1a; padding-bottom: 2px; }
 
+    /* POP-UP CUSTOM STYLES */
+    .custom-modal-overlay {
+      display: none; 
+      position: fixed; 
+      top: 0; left: 0; 
+      width: 100%; height: 100%; 
+      background: rgba(0,0,0,0.85); 
+      z-index: 10000; 
+      justify-content: center; 
+      align-items: center;
+    }
+    .custom-modal-box {
+      background: #1e1e1e; 
+      border: 2px solid #f1c40f; 
+      border-radius: 12px; 
+      padding: 20px; 
+      text-align: center; 
+      max-width: 400px; 
+      width: 90%; 
+      color: #fff;
+      box-shadow: 0px 4px 15px rgba(0,0,0,0.5);
+    }
+
     @media (max-width: 768px) {
       .grid-2 { grid-template-columns: 1fr; }
       .form-row { flex-direction: column; }
@@ -212,14 +235,24 @@
   </div>
 
   <!-- POP-UP OVERLAY MASA TAMAT PENGADIL -->
-  <div id="pengadilOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center;">
-    <div style="background: #1e1e1e; border: 3px solid #f1c40f; border-radius: 12px; padding: 25px; text-align: center; max-width: 480px; width: 90%; color: #fff;">
+  <div id="pengadilOverlay" class="custom-modal-overlay">
+    <div class="custom-modal-box" style="border-color: #f1c40f;">
       <h2 id="popTitle" style="color: #f1c40f; margin-top: 0;">⏱️ MASA TAMAT ⏱️</h2>
       <h3 id="popSubTitle" style="color: #2ecc71; margin: 10px 0;">PUSINGAN TAMAT</h3>
-      
       <div id="popContent" style="background: #111; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid #333;"></div>
-
       <div id="popActions" style="display: flex; flex-direction: column; gap: 10px; width: 100%;"></div>
+    </div>
+  </div>
+
+  <!-- POP-UP PENGESAHAN BERSUASANA DILENGKAPI OK / BATAL -->
+  <div id="confirmModalOverlay" class="custom-modal-overlay">
+    <div class="custom-modal-box">
+      <h3 id="confirmTitle" style="margin-top: 0; color: #f39c12;">❓ PENGESAHAN</h3>
+      <p id="confirmMessage" style="font-size: 1.05rem; margin: 15px 0; color: #ddd;"></p>
+      <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
+        <button id="btnConfirmOk" class="btn btn-success" style="flex: 1;">OK</button>
+        <button id="btnConfirmCancel" class="btn btn-danger" style="flex: 1;">BATAL</button>
+      </div>
     </div>
   </div>
 
@@ -227,6 +260,29 @@
     const socket = io();
     let currentLogs = [];
     let hasPoppedForRound = false;
+
+    // FUNGSI UTILITY: POP-UP IN-SCREEN (OK / CANCEL)
+    function showInScreenConfirm(title, message, onConfirm) {
+      const overlay = document.getElementById('confirmModalOverlay');
+      const titleElem = document.getElementById('confirmTitle');
+      const msgElem = document.getElementById('confirmMessage');
+      const btnOk = document.getElementById('btnConfirmOk');
+      const btnCancel = document.getElementById('btnConfirmCancel');
+
+      titleElem.innerText = title;
+      msgElem.innerText = message;
+
+      overlay.style.display = 'flex';
+
+      btnOk.onclick = function() {
+        overlay.style.display = 'none';
+        if (onConfirm) onConfirm();
+      };
+
+      btnCancel.onclick = function() {
+        overlay.style.display = 'none';
+      };
+    }
 
     function formatTime(seconds) {
       const m = Math.floor(seconds / 60).toString().padStart(2, '0');
@@ -310,7 +366,6 @@
       `;
 
       if (currentRound < 3) {
-        // ROUND 1 & 2 -> 2 PILIHAN
         popTitle.innerText = "⏱️ MASA TAMAT ⏱️";
         popSubTitle.innerText = `PUSINGAN ${currentRound} TAMAT`;
         popSubTitle.style.color = "#f39c12";
@@ -321,7 +376,6 @@
           <button class="btn btn-success" style="padding: 12px; font-size: 1rem;" onclick="publishWinnerFromModal()">🏆 PAMERKAN KEPUTUSAN PEMENANG</button>
         `;
       } else {
-        // ROUND 3 -> 1 PILIHAN SAHAJA
         popTitle.innerText = "🏁 PERLAWANAN TAMAT 🏁";
         popSubTitle.innerText = "PUSINGAN 3 (AKHIR) TAMAT";
         popSubTitle.style.color = "#2ecc71";
@@ -368,8 +422,16 @@
     function togglePenalty(color, code, pts) { socket.emit('togglePenalty', { color, code, pts }); }
     function modifyScore(color, pts) { socket.emit('modifyScore', { color, pts }); }
 
+    // SEMAKAN PENGESAHAN JURI (POP-UP IN-SCREEN)
     function requestVerification(type, color) {
-      socket.emit('requestVerification', { type, color });
+      const colorName = color.toUpperCase() === 'BLUE' ? 'BIRU' : 'MERAH';
+      showInScreenConfirm(
+        '🔍 SEMAKAN JURI',
+        `Minta pengesahan ${type} bagi Sudut ${colorName}?`,
+        function() {
+          socket.emit('requestVerification', { type, color });
+        }
+      );
     }
 
     function downloadLog() {
@@ -385,18 +447,28 @@
       document.body.removeChild(a);
     }
 
+    // PENGISYTIHARAN PEMENANG (POP-UP IN-SCREEN)
     function publishWinner() {
-      if (confirm('Sahkan pengumuman pemenang ke skrin TV?')) {
-        socket.emit('publishWinnerToTV');
-      }
+      showInScreenConfirm(
+        '🏆 ISYTIHAR PEMENANG',
+        'Sahkan pengumuman pemenang ke skrin TV?',
+        function() {
+          socket.emit('publishWinnerToTV');
+        }
+      );
     }
 
+    // RESET KESELURUHAN (POP-UP IN-SCREEN)
     function resetAll() {
-      if (confirm('Sahkan Reset Keseluruhan?')) {
-        socket.emit('resetScore');
-        document.getElementById('logList').innerHTML = '';
-        currentLogs = [];
-      }
+      showInScreenConfirm(
+        '⚠️ RESET KESELURUHAN',
+        'Adakah anda pasti untuk reset keseluruhan perlawanan?',
+        function() {
+          socket.emit('resetScore');
+          document.getElementById('logList').innerHTML = '';
+          currentLogs = [];
+        }
+      );
     }
   </script>
 </body>
