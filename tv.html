@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="ms">
 <head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Scoreboard TV Silat</title>
   <script src="/socket.io/socket.io.js"></script>
   <style>
@@ -38,7 +39,6 @@
     /* GRID SIMBOL HUKUMAN */
     .penalties-grid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(3, 1fr); gap: 5px; }
     
-    /* ASAL: KOTAK HITAM DENGAN TEKS MALAP APABILA OFF */
     .p-icon-box { 
       background: #111; 
       color: #555; 
@@ -79,9 +79,40 @@
 
     /* INDIKATOR JURI (3 KOTAK BAWAH SKOR) */
     .juri-indicators { display: flex; gap: 5px; height: 5vh; }
-    .juri-box { flex: 1; background: #222; border: 2px solid #444; border-radius: 6px; display: flex; justify-content: center; align-items: center; font-size: 1vw; font-weight: bold; color: #777; }
-    .juri-box.active-blue { background: #0080ff; color: white; border-color: #fff; box-shadow: 0 0 10px #0080ff; }
-    .juri-box.active-red { background: #d32f2f; color: white; border-color: #fff; box-shadow: 0 0 10px #d32f2f; }
+    .juri-box { 
+      flex: 1; 
+      background: #222; 
+      border: 2px solid #444; 
+      border-radius: 6px; 
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+      font-size: 1vw; 
+      font-weight: bold; 
+      color: #555; 
+      transition: all 0.15s ease;
+    }
+
+    /* KESAN LAMPU MENYALA APABILA JURI TEKAN BUTTON */
+    .juri-indicators #blue_juri_1.active,
+    .juri-indicators #blue_juri_2.active,
+    .juri-indicators #blue_juri_3.active { 
+      background: #0080ff !important; 
+      color: #fff !important; 
+      border-color: #ffffff !important; 
+      box-shadow: 0 0 20px #0080ff; 
+      transform: scale(1.05);
+    }
+
+    .juri-indicators #red_juri_1.active,
+    .juri-indicators #red_juri_2.active,
+    .juri-indicators #red_juri_3.active { 
+      background: #d32f2f !important; 
+      color: #fff !important; 
+      border-color: #ffffff !important; 
+      box-shadow: 0 0 20px #d32f2f; 
+      transform: scale(1.05);
+    }
 
     /* POPUP VERIFICATION & DISQUALIFIED */
     #tvOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); z-index: 999; flex-direction: column; justify-content: center; align-items: center; border: 10px solid #f1c40f; }
@@ -217,7 +248,7 @@
           const elem = document.getElementById(`${color}_${p.code}`);
           if (elem) {
             elem.classList.remove('active-amaran', 'active-teguran', 'active-peringatan');
-            if (state.penalties[color][p.code]) {
+            if (state.penalties && state.penalties[color] && state.penalties[color][p.code]) {
               elem.classList.add(p.type);
             }
           }
@@ -225,14 +256,19 @@
       });
     });
 
-    // Nyalakan Lampu Indikator Tekanan Juri (1-3) Realtime
+    // MENYALAKAN LAMPU INDIKATOR JURI PADA SKRIN TV
     socket.on('juriPressSignal', (data) => {
-      const { juriId, color } = data;
-      const juriBox = document.getElementById(`${color}_juri_${juriId}`);
-      if (juriBox) {
-        const activeClass = color === 'blue' ? 'active-blue' : 'active-red';
-        juriBox.classList.add(activeClass);
-        setTimeout(() => { juriBox.classList.remove(activeClass); }, 1200);
+      // Menyokong penghantaran terus ID (data.elementId) atau binaan manual (blue_juri_1)
+      const targetId = data.elementId || `${data.color}_juri_${data.juriId}`;
+      const lampElement = document.getElementById(targetId);
+
+      if (lampElement) {
+        lampElement.classList.add('active'); // Menyala
+
+        // Padam semula selepas 1 saat (1000ms)
+        setTimeout(() => {
+          lampElement.classList.remove('active');
+        }, 1000);
       }
     });
 
