@@ -146,7 +146,7 @@ io.on('connection', (socket) => {
     juriVotes[color] = juriVotes[color].filter(v => (now - v.time) <= TIME_WINDOW);
     
     const uniqueJudges = new Set(juriVotes[color].map(v => v.juriId));
-    if (uniqueJudges.size >= 2) {
+    if (uniqueJudges.size >= 3) {
       score[color]++;
       juriVotes[color] = [];
       io.emit('updateScore', score);
