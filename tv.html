@@ -21,19 +21,20 @@
     .info-bar { display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 10px; height: 10vh; margin-bottom: 10px; }
     .info-card { background: #1a252f; border: 2px solid #34495e; border-radius: 8px; display: flex; justify-content: center; align-items: center; font-weight: 900; color: #fff; text-transform: uppercase; }
     .match-info { font-size: 2vw; color: #ffffff; }
-    .timer-info { font-size: 3.5vw; color: #2ecc71; /* Hijau terang */font-family: monospace; background: #000; border-color: #27ae60; /* Hijau border */}
-    .timer-info.paused { color: #f39c12; /* Oren terang */; border-color: #d35400; /* Oren gelap untuk border */; animation: blink 1.2s infinite; }
+    .timer-info { font-size: 3.5vw; color: #2ecc71; /* Hijau terang */ font-family: monospace; background: #000; border-color: #27ae60; }
+    .timer-info.paused { color: #f39c12; /* Oren terang */ border-color: #d35400; animation: blink 1.2s infinite; }
     @keyframes blink { 50% { opacity: 0.5; } }
     .round-info { font-size: 2.2vw; color: #ffffff; }
 
     /* MAIN BOARD AREA */
     .main-board { display: flex; gap: 10px; height: 75vh; }
-    .corner-side { flex: 1; display: flex; flex-direction: column; gap: 5px; }
-    
-    .score-and-penalties { flex: 1; display: flex; gap: 5px; }
+    .corner-side { flex: 1; display: flex; gap: 5px; }
+
+    /* LUKISAN SEKSYEN SKOR & JURI */
+    .score-juri-section { flex: 1.2; display: flex; flex-direction: column; gap: 5px; }
     
     /* SKOR BOX */
-    .score-box { flex: 1.2; background: #111; border-radius: 10px; display: flex; justify-content: center; align-items: center; font-size: 17vw; font-weight: 900; line-height: 1; border: 4px solid #333; }
+    .score-box { flex: 1; background: #111; border-radius: 10px; display: flex; justify-content: center; align-items: center; font-size: 17vw; font-weight: 900; line-height: 1; border: 4px solid #333; }
     .blue-score { color: #3498db; background: #001f3f; border-color: #0080ff; }
     .red-score { color: #e74c3c; background: #3d0000; border-color: #d32f2f; }
 
@@ -53,7 +54,7 @@
       transition: all 0.2s; 
     }
     
-    /* WARNA DINAMIK APABILA DITEKAN PENGADIL (AKTIF) */
+    /* WARNA DINAMIK HUKUMAN AKTIF */
     .p-icon-box.active-amaran { 
       background: #f1c40f !important; /* KUNING */
       color: #000 !important; 
@@ -78,8 +79,8 @@
       transform: scale(1.02); 
     }
 
-    /* INDIKATOR JURI (3 KOTAK BAWAH SKOR) */
-    .juri-indicators { display: flex; gap: 5px; height: 5vh; }
+    /* INDIKATOR JURI (3 KOTAK TEPAT DI BAWAH SKOR) */
+    .juri-indicators { display: flex; gap: 5px; height: 6vh; }
     .juri-box { 
       flex: 1; 
       background: #222; 
@@ -151,47 +152,47 @@
     
     <!-- SUDUT BIRU -->
     <div class="corner-side">
-      <div class="score-and-penalties">
-        <!-- ISYARAT HUKUMAN BIRU -->
-        <div class="penalties-grid">
-          <div class="p-icon-box" id="blue_A1" title="Amaran 1">👈</div>
-          <div class="p-icon-box" id="blue_A2" title="Amaran 2">👈✌️</div>
-          <div class="p-icon-box" id="blue_T1" title="Teguran 1 (-1)">☝️</div>
-          <div class="p-icon-box" id="blue_T2" title="Teguran 2 (-2)">✌️</div>
-          <div class="p-icon-box" id="blue_P1" title="Peringatan 1 (-5)">🙅‍♂️</div>
-          <div class="p-icon-box" id="blue_P2" title="Peringatan 2 (-10)">🙅‍♂️🙅‍♂️</div>
-        </div>
-        <!-- SKOR BIRU -->
-        <div class="score-box blue-score" id="blueScore">0</div>
+      <!-- ISYARAT HUKUMAN BIRU -->
+      <div class="penalties-grid">
+        <div class="p-icon-box" id="blue_A1" title="Amaran 1">👈</div>
+        <div class="p-icon-box" id="blue_A2" title="Amaran 2">👈✌️</div>
+        <div class="p-icon-box" id="blue_T1" title="Teguran 1 (-1)">☝️</div>
+        <div class="p-icon-box" id="blue_T2" title="Teguran 2 (-2)">✌️</div>
+        <div class="p-icon-box" id="blue_P1" title="Peringatan 1 (-5)">🙅‍♂️</div>
+        <div class="p-icon-box" id="blue_P2" title="Peringatan 2 (-10)">🙅‍♂️🙅‍♂️</div>
       </div>
-      <!-- 3 KOTAK JURI BIRU -->
-      <div class="juri-indicators">
-        <div class="juri-box" id="blue_juri_1">JURI 1</div>
-        <div class="juri-box" id="blue_juri_2">JURI 2</div>
-        <div class="juri-box" id="blue_juri_3">JURI 3</div>
+
+      <!-- SKOR & JURI BIRU -->
+      <div class="score-juri-section">
+        <div class="score-box blue-score" id="blueScore">0</div>
+        <div class="juri-indicators">
+          <div class="juri-box" id="blue_juri_1">JURI 1</div>
+          <div class="juri-box" id="blue_juri_2">JURI 2</div>
+          <div class="juri-box" id="blue_juri_3">JURI 3</div>
+        </div>
       </div>
     </div>
 
     <!-- SUDUT MERAH -->
     <div class="corner-side">
-      <div class="score-and-penalties">
-        <!-- SKOR MERAH -->
+      <!-- SKOR & JURI MERAH -->
+      <div class="score-juri-section">
         <div class="score-box red-score" id="redScore">0</div>
-        <!-- ISYARAT HUKUMAN MERAH -->
-        <div class="penalties-grid">
-          <div class="p-icon-box" id="red_A1" title="Amaran 1">👈</div>
-          <div class="p-icon-box" id="red_A2" title="Amaran 2">👈✌️</div>
-          <div class="p-icon-box" id="red_T1" title="Teguran 1 (-1)">☝️</div>
-          <div class="p-icon-box" id="red_T2" title="Teguran 2 (-2)">✌️</div>
-          <div class="p-icon-box" id="red_P1" title="Peringatan 1 (-5)">🙅‍♂️</div>
-          <div class="p-icon-box" id="red_P2" title="Peringatan 2 (-10)">🙅‍♂️🙅‍♂️</div>
+        <div class="juri-indicators">
+          <div class="juri-box" id="red_juri_1">JURI 1</div>
+          <div class="juri-box" id="red_juri_2">JURI 2</div>
+          <div class="juri-box" id="red_juri_3">JURI 3</div>
         </div>
       </div>
-      <!-- 3 KOTAK JURI MERAH -->
-      <div class="juri-indicators">
-        <div class="juri-box" id="red_juri_1">JURI 1</div>
-        <div class="juri-box" id="red_juri_2">JURI 2</div>
-        <div class="juri-box" id="red_juri_3">JURI 3</div>
+
+      <!-- ISYARAT HUKUMAN MERAH -->
+      <div class="penalties-grid">
+        <div class="p-icon-box" id="red_A1" title="Amaran 1">👈</div>
+        <div class="p-icon-box" id="red_A2" title="Amaran 2">👈✌️</div>
+        <div class="p-icon-box" id="red_T1" title="Teguran 1 (-1)">☝️</div>
+        <div class="p-icon-box" id="red_T2" title="Teguran 2 (-2)">✌️</div>
+        <div class="p-icon-box" id="red_P1" title="Peringatan 1 (-5)">🙅‍♂️</div>
+        <div class="p-icon-box" id="red_P2" title="Peringatan 2 (-10)">🙅‍♂️🙅‍♂️</div>
       </div>
     </div>
 
@@ -257,7 +258,7 @@
       });
     });
 
-   // MENYALAKAN LAMPU INDIKATOR JURI & PAPAR SIMBOL SERANGAN
+    // MENYALAKAN LAMPU INDIKATOR JURI & PAPAR SIMBOL SERANGAN
     socket.on('juriPressSignal', (data) => {
       const targetId = data.elementId || `${data.color}_juri_${data.juriId}`;
       const lampElement = document.getElementById(targetId);
