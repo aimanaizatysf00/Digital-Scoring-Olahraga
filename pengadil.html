@@ -14,7 +14,6 @@
     .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
     .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
     
-    /* Layout Kiri (Biru) & Kanan (Merah) */
     .pelarasan-container { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
     .pelarasan-box { background: #1a1a1a; padding: 8px; border-radius: 8px; border: 1px solid #333; }
     .pelarasan-box.blue-box { border-color: #2980b9; }
@@ -78,8 +77,8 @@
     <button class="purple" style="grid-column: span 2;" onclick="setRound(3)">ROUND 3</button>
   </div>
 
-  <!-- HUKUMAN -->
-  <div class="section-title">🚨 HUKUMAN (TEKAN UNTUK ON / OFF)</div>
+  <!-- HUKUMAN MANUAL (ON / OFF STATUS SAHAJA) -->
+  <div class="section-title">🚨 PENATAP KOTAK HUKUMAN (TEKAN UNTUK MANUAL ON/OFF)</div>
   <div class="btn-grid">
     <button class="blue" id="btn_blue_A1" onclick="togglePenalty('blue', 'A1', 0)">BIRU: Amaran 1 👈</button>
     <button class="red" id="btn_red_A1" onclick="togglePenalty('red', 'A1', 0)">MERAH: Amaran 1 👈</button>
@@ -151,20 +150,24 @@
     </div>
   </div>
 
-  <!-- PENGESAHAN JURI -->
+  <!-- PENGESAHAN JURI (SUSUNAN: JATUHAN ➔ AMARAN ➔ TEGURAN ➔ PERINGATAN) -->
   <div class="section-title">⚖️ PENGESAHAN JURI (JATUHAN & PELANGGARAN)</div>
   <div class="btn-grid">
+    <!-- 1. JATUHAN -->
     <button class="blue" onclick="requestVerification('JATUHAN', 'blue')">💥 JATUHAN BIRU</button>
     <button class="red" onclick="requestVerification('JATUHAN', 'red')">💥 JATUHAN MERAH</button>
 
-    <button class="blue" onclick="requestVerification('PERINGATAN', 'blue')">🙅‍♂️ PERINGATAN BIRU</button>
-    <button class="red" onclick="requestVerification('PERINGATAN', 'red')">🙅‍♂️ PERINGATAN MERAH</button>
-
-    <button class="blue" onclick="requestVerification('TEGURAN', 'blue')">☝️ TEGURAN BIRU</button>
-    <button class="red" onclick="requestVerification('TEGURAN', 'red')">☝️ TEGURAN MERAH</button>
-
+    <!-- 2. AMARAN -->
     <button class="blue" onclick="requestVerification('AMARAN', 'blue')">👈 AMARAN BIRU</button>
     <button class="red" onclick="requestVerification('AMARAN', 'red')">👈 AMARAN MERAH</button>
+
+    <!-- 3. TEGURAN -->
+    <button class="blue" onclick="requestVerification('TEGURAN', 'blue')">☝️ TEGURAN BIRU (-1 / -2)</button>
+    <button class="red" onclick="requestVerification('TEGURAN', 'red')">☝️ TEGURAN MERAH (-1 / -2)</button>
+
+    <!-- 4. PERINGATAN -->
+    <button class="blue" onclick="requestVerification('PERINGATAN', 'blue')">🙅‍♂️ PERINGATAN BIRU (-5 / -10)</button>
+    <button class="red" onclick="requestVerification('PERINGATAN', 'red')">🙅‍♂️ PERINGATAN MERAH (-5 / -10)</button>
   </div>
 
   <button class="grey" onclick="resetScore()">RESET KESELURUHAN PERTANDINGAN</button>
@@ -189,7 +192,7 @@
       if (state.timer.isRunning) timerElem.classList.remove('paused');
       else timerElem.classList.add('paused');
 
-      // Sync active buttons
+      // Sync status butang hukuman aktif
       const penalties = ['A1', 'A2', 'T1', 'T2', 'P1', 'P2'];
       ['blue', 'red'].forEach(color => {
         penalties.forEach(p => {
