@@ -106,30 +106,32 @@
   </div>
 
   <!-- 2. KEMAS KINI MAKLUMAT PERLAWANAN -->
-  <div class="card">
-    <h3>📝 MAKLUMAT PERLAWANAN</h3>
-    
-    <!-- KELAS & MATCH NO -->
-    <div class="form-row">
-      <input type="text" id="className" placeholder="Kelas (contoh: CLASS A)" value="CLASS A">
-      <input type="text" id="matchNo" placeholder="No. Match (contoh: 1)" value="1">
-    </div>
-
-    <!-- NAMA PESILAT & KONTINJEN -->
-    <div class="form-row">
-      <input type="text" id="blueName" placeholder="Nama Pesilat Biru" value="PESILAT BIRU">
-      <input type="text" id="blueTeam" placeholder="Kontinjen Biru" value="KONTINJEN BIRU">
-    </div>
-    <div class="form-row">
-      <input type="text" id="redName" placeholder="Nama Pesilat Merah" value="PESILAT MERAH">
-      <input type="text" id="redTeam" placeholder="Kontinjen Merah" value="KONTINJEN MERAH">
-    </div>
-
-    <!-- KEMASKINI MAKLUMAT -->
-    <div style="text-align: center; margin-top: 10px;">
-      <button class="btn btn-info" style="width: 100%;" onclick="updateMatchDetails()">🔄 KEMASKINI MAKLUMAT</button>
-    </div>
+<div class="card">
+  <h3>📝 MAKLUMAT PERLAWANAN</h3>
+  
+  <!-- BARIS 1: CLASS & MATCH NO -->
+  <div class="form-row">
+    <input type="text" id="className" placeholder="Class (contoh: CLASS A)" value="CLASS A">
+    <input type="text" id="matchNo" placeholder="Match No (contoh: 1)" value="1">
   </div>
+
+  <!-- BARIS 2: PESILAT SUDUT BIRU & PESILAT SUDUT MERAH -->
+  <div class="form-row">
+    <input type="text" id="blueName" placeholder="Pesilat Sudut Biru" value="PESILAT BIRU">
+    <input type="text" id="redName" placeholder="Pesilat Sudut Merah" value="PESILAT MERAH">
+  </div>
+
+  <!-- BARIS 3: KONTINJEN SUDUT BIRU & KONTINJEN SUDUT MERAH -->
+  <div class="form-row">
+    <input type="text" id="blueTeam" placeholder="Kontinjen Sudut Biru" value="KONTINJEN BIRU">
+    <input type="text" id="redTeam" placeholder="Kontinjen Sudut Merah" value="KONTINJEN MERAH">
+  </div>
+
+  <!-- BUTANG KEMASKINI MAKLUMAT -->
+  <div style="text-align: center; margin-top: 10px;">
+    <button class="btn btn-info" style="width: 100%;" onclick="updateMatchDetails()">🔄 KEMASKINI MAKLUMAT</button>
+  </div>
+</div>
 
   <!-- SEKSYEN BAHAGIAN BIRU & MERAH -->
   <div class="grid-2">
