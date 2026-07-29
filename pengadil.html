@@ -10,21 +10,26 @@
     .timer-big { font-size: 28px; color: #2ecc71; font-family: monospace; }
     .timer-big.paused { color: #e74c3c; }
 
-    .section-title { font-size: 12px; margin-top: 12px; text-align: left; color: #f1c40f; text-transform: uppercase; font-weight: bold; border-bottom: 1px solid #444; padding-bottom: 4px; }
+    .section-title { font-size: 12px; margin-top: 14px; text-align: left; color: #f1c40f; text-transform: uppercase; font-weight: bold; border-bottom: 1px solid #444; padding-bottom: 4px; }
     .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+    .btn-grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-bottom: 6px; }
     .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
     
     input { padding: 8px; font-size: 12px; border-radius: 6px; border: 1px solid #555; background: #222; color: white; width: 100%; box-sizing: border-box; }
-    button { padding: 10px; font-size: 12px; font-weight: bold; border-radius: 6px; border: none; cursor: pointer; color: white; }
+    button { padding: 10px 4px; font-size: 12px; font-weight: bold; border-radius: 6px; border: none; cursor: pointer; color: white; }
     
     .blue { background: #2980b9; } .red { background: #c0392b; }
-    .blue-add { background: #1f618d; border: 1px solid #3498db; } .red-add { background: #922b21; border: 1px solid #e74c3c; }
-    .btn-sub { background: #555; border: 1px solid #888; }
+    .blue-add { background: #1f618d; border: 1px solid #3498db; } 
+    .red-add { background: #922b21; border: 1px solid #e74c3c; }
+    .blue-sub { background: #154360; border: 1px solid #2980b9; } 
+    .red-sub { background: #641e16; border: 1px solid #c0392b; }
+    
     .green { background: #2ecc71; color: black; } .yellow { background: #f39c12; color: black; } .purple { background: #8e44ad; }
-    .grey { background: #e74c3c; grid-column: span 2; padding: 12px; margin-top: 10px; font-size: 14px; }
+    .grey { background: #e74c3c; grid-column: span 2; padding: 12px; margin-top: 15px; font-size: 14px; width: 100%; }
     button.active-p { border: 2px solid #f1c40f !important; background: #e74c3c !important; color: white; }
 
     #verifyStatus { font-size: 14px; color: #2ecc71; font-weight: bold; min-height: 18px; margin: 4px 0; }
+    .side-label { font-size: 11px; font-weight: bold; text-align: left; margin: 4px 0 2px 0; }
   </style>
 </head>
 <body>
@@ -89,20 +94,68 @@
 
   <!-- PELARASAN MARKAH MANUAL -->
   <div class="section-title">➕ / ➖ PELARASAN MARKAH MANUAL</div>
-  <div class="btn-grid">
-    <button class="blue-add" onclick="modifyScore('blue', 1)">BIRU +1</button>
-    <button class="red-add" onclick="modifyScore('red', 1)">MERAH +1</button>
-    <button class="blue-add" onclick="modifyScore('blue', 2)">BIRU +2</button>
-    <button class="red-add" onclick="modifyScore('red', 2)">MERAH +2</button>
-    <button class="btn-sub" onclick="modifyScore('blue', -1)">BIRU -1</button>
-    <button class="btn-sub" onclick="modifyScore('red', -1)">MERAH -1</button>
+  
+  <div class="side-label" style="color: #3498db;">🔵 BIRU - TAMBAH (+)</div>
+  <div class="btn-grid-5">
+    <button class="blue-add" onclick="modifyScore('blue', 1)">+1</button>
+    <button class="blue-add" onclick="modifyScore('blue', 2)">+2</button>
+    <button class="blue-add" onclick="modifyScore('blue', 3)">+3</button>
+    <button class="blue-add" onclick="modifyScore('blue', 5)">+5</button>
+    <button class="blue-add" onclick="modifyScore('blue', 10)">+10</button>
+  </div>
+
+  <div class="side-label" style="color: #3498db;">🔵 BIRU - TOLAK (-)</div>
+  <div class="btn-grid-5">
+    <button class="blue-sub" onclick="modifyScore('blue', -1)">-1</button>
+    <button class="blue-sub" onclick="modifyScore('blue', -2)">-2</button>
+    <button class="blue-sub" onclick="modifyScore('blue', -3)">-3</button>
+    <button class="blue-sub" onclick="modifyScore('blue', -5)">-5</button>
+    <button class="blue-sub" onclick="modifyScore('blue', -10)">-10</button>
+  </div>
+
+  <div class="side-label" style="color: #e74c3c;">🔴 MERAH - TAMBAH (+)</div>
+  <div class="btn-grid-5">
+    <button class="red-add" onclick="modifyScore('red', 1)">+1</button>
+    <button class="red-add" onclick="modifyScore('red', 2)">+2</button>
+    <button class="red-add" onclick="modifyScore('red', 3)">+3</button>
+    <button class="red-add" onclick="modifyScore('red', 5)">+5</button>
+    <button class="red-add" onclick="modifyScore('red', 10)">+10</button>
+  </div>
+
+  <div class="side-label" style="color: #e74c3c;">🔴 MERAH - TOLAK (-)</div>
+  <div class="btn-grid-5">
+    <button class="red-sub" onclick="modifyScore('red', -1)">-1</button>
+    <button class="red-sub" onclick="modifyScore('red', -2)">-2</button>
+    <button class="red-sub" onclick="modifyScore('red', -3)">-3</button>
+    <button class="red-sub" onclick="modifyScore('red', -5)">-5</button>
+    <button class="red-sub" onclick="modifyScore('red', -10)">-10</button>
   </div>
 
   <!-- PENGESAHAN JURI -->
-  <div class="section-title">⚖️ PENGESAHAN JURI</div>
+  <div class="section-title">⚖️ PENGESAHAN JURI (JATUHAN & PELANGGARAN)</div>
+  
+  <div class="side-label">💥 JATUHAN</div>
   <div class="btn-grid">
     <button class="blue" onclick="requestVerification('JATUHAN', 'blue')">JATUHAN BIRU</button>
     <button class="red" onclick="requestVerification('JATUHAN', 'red')">JATUHAN MERAH</button>
+  </div>
+
+  <div class="side-label">🙅‍♂️ PERINGATAN (PENALTI)</div>
+  <div class="btn-grid">
+    <button class="blue" onclick="requestVerification('PERINGATAN', 'blue')">PERINGATAN BIRU</button>
+    <button class="red" onclick="requestVerification('PERINGATAN', 'red')">PERINGATAN MERAH</button>
+  </div>
+
+  <div class="side-label">☝️ TEGURAN (PENALTI)</div>
+  <div class="btn-grid">
+    <button class="blue" onclick="requestVerification('TEGURAN', 'blue')">TEGURAN BIRU</button>
+    <button class="red" onclick="requestVerification('TEGURAN', 'red')">TEGURAN MERAH</button>
+  </div>
+
+  <div class="side-label">👈 AMARAN (PENALTI)</div>
+  <div class="btn-grid">
+    <button class="blue" onclick="requestVerification('AMARAN', 'blue')">AMARAN BIRU</button>
+    <button class="red" onclick="requestVerification('AMARAN', 'red')">AMARAN MERAH</button>
   </div>
 
   <button class="grey" onclick="resetScore()">RESET KESELURUHAN PERTANDINGAN</button>
@@ -132,10 +185,15 @@
       ['blue', 'red'].forEach(color => {
         penalties.forEach(p => {
           const btn = document.getElementById(`btn_${color}_${p}`);
-          if (state.penalties[color][p]) btn.classList.add('active-p');
-          else btn.classList.remove('active-p');
+          if (btn && state.penalties[color][p]) btn.classList.add('active-p');
+          else if (btn) btn.classList.remove('active-p');
         });
       });
+    });
+
+    socket.on('verificationResult', (data) => {
+      document.getElementById('verifyStatus').innerText = data.text;
+      setTimeout(() => { document.getElementById('verifyStatus').innerText = ''; }, 5000);
     });
 
     function updateMatchDetails() {
