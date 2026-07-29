@@ -72,7 +72,7 @@ io.on('connection', (socket) => {
     const juriId = String(data.juriId);
     const { color, points } = data;
 
-    // 1. Hantar isyarat bersama maklumat points untuk paparan simbol di TV
+    // 1. Hantar isyarat untuk menyalakan lampu indikator Juri di TV
     const juriElementId = `${color}_juri_${juriId}`;
     io.emit('juriPressSignal', { 
       elementId: juriElementId,
@@ -80,28 +80,6 @@ io.on('connection', (socket) => {
       juriId: juriId,
       points: points 
     });
-
-    // 2. Semakan keputusan majoriti (2 daripada 3 Juri)
-    const key = `${color}_${points}`;
-    if (!juriVotes[key]) juriVotes[key] = [];
-
-    juriVotes[key] = juriVotes[key].filter(v => (now - v.time) <= TIME_WINDOW);
-
-    const existingVoteIndex = juriVotes[key].findIndex(v => v.juriId === juriId);
-    if (existingVoteIndex !== -1) {
-      juriVotes[key][existingVoteIndex].time = now;
-    } else {
-      juriVotes[key].push({ juriId, time: now });
-    }
-
-    const uniqueJudges = new Set(juriVotes[key].map(v => v.juriId));
-
-    if (uniqueJudges.size >= 2) {
-      state.score[color] += Number(points);
-      juriVotes[key] = []; 
-      io.emit('updateState', state); 
-    }
-  });
 
     // 2. Semakan keputusan majoriti (2 daripada 3 Juri)
     const key = `${color}_${points}`;
