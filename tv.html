@@ -225,16 +225,20 @@
       });
     });
 
-    // Nyalakan Lampu Indikator Tekanan Juri (1-3) Realtime
-    socket.on('juriPressSignal', (data) => {
-      const { juriId, color } = data;
-      const juriBox = document.getElementById(`${color}_juri_${juriId}`);
-      if (juriBox) {
-        const activeClass = color === 'blue' ? 'active-blue' : 'active-red';
-        juriBox.classList.add(activeClass);
-        setTimeout(() => { juriBox.classList.remove(activeClass); }, 1200);
-      }
-    });
+    // MENYALAKAN LAMPU INDIKATOR JURI PADA SKRIN TV
+socket.on('juriPressSignal', (data) => {
+  // Cari elemen berdasarkan ID contoh: blue_juri_1 atau red_juri_2
+  const lampElement = document.getElementById(data.elementId);
+
+  if (lampElement) {
+    lampElement.classList.add('active'); // Tambah class active (Lampu Menyala)
+
+    // Padamkan lampu semula selepas 1 saat (1000ms)
+    setTimeout(() => {
+      lampElement.classList.remove('active');
+    }, 1000);
+  }
+});
 
     socket.on('promptVerification', (data) => {
       document.getElementById('tvVerifyTitle').innerText = "⚠️ SEMAKAN PENGESAHAN JURI ⚠️";
