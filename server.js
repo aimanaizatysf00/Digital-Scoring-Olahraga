@@ -17,7 +17,6 @@ app.get('/juri', (req, res) => res.sendFile(__dirname + '/juri.html'));
 let state = {
   timer: { currentTime: 90, duration: 90, isRunning: false },
   round: 1,
-  // Disesuaikan nama 'matchInfo' supaya serasi terus dengan tv.html
   matchInfo: {
     className: 'CLASS A',
     matchNo: '1',
@@ -36,7 +35,11 @@ let state = {
 };
 
 let timerInterval = null;
-let currentVerification = null; // Menyimpan status undian juri
+let currentVerification = null; 
+
+// LOGIK MAJORITI JURI (TIMED BUFFER)
+let pendingScores = []; 
+const VERIFICATION_WINDOW = 2000; // Sela masa 2.0 saat untuk pengesahan juri
 
 function addLog(text) {
   const timestamp = new Date().toLocaleTimeString('ms-MY', { hour12: false });
@@ -75,7 +78,7 @@ function calculateWinner() {
 }
 
 io.on('connection', (socket) => {
-  // Hantar state terkini sebaik sahaja mana-mana peranti (TV/Juri/Pengadil) bersambung
+  // Hantar state terkini sebaik sahaja mana-mana peranti bersambung
   socket.emit('updateState', state);
 
   // --- KAWALAN PEMASA (TIMER) ---
@@ -133,76 +136,54 @@ io.on('connection', (socket) => {
     io.emit('updateState', state);
   });
 
-  // --- LOGIK MAJORITI JURI (BERATURAN MASA / TIMED BUFFER) ---
-let pendingScores = []; 
-const VERIFICATION_WINDOW = 2000; // Dinaikkan ke 2.0 saat supaya juri ada masa mencukupi
+  // --- LOGIK MAJORITI JURI (TERSUKAT & DIPATUHI) ---
+  socket.on('pressScore', (data) => {
+    const juriId = Number(data.juriId);
+    const color = String(data.color).toLowerCase();
+    const points = Number(data.points);
+    const now = Date.now();
 
-socket.on('pressScore', (data) => {
-  // 1. KANONIKALKAN DATA (Tukar juriId dan points kepada Nombor secara paksa)
-  const juriId = Number(data.juriId);
-  const color = String(data.color).toLowerCase();
-  const points = Number(data.points);
-  const now = Date.now();
+    addLog(`🔘 Juri ${juriId} tekan +${points} (${color.toUpperCase()})`);
 
-  addLog(`🔘 Juri ${juriId} tekan +${points} (${color.toUpperCase()})`);
+    // 1. Hantar signal visual lampu ke TV/Pengadil
+    io.emit('juriPressSignal', { juriId, color, points });
 
-  // 2. Hantar signal visual lampu ke TV/Pengadil
-  io.emit('juriPressSignal', { juriId, color, points });
+    // 2. Tapis rekod butang yang telah melepasi tempoh masa 2 saat
+    pendingScores = pendingScores.filter(item => (now - item.timestamp) <= VERIFICATION_WINDOW);
 
-  // 3. Buang rekod tekanan yang melepasi tempoh masa (2 saat)
-  pendingScores = pendingScores.filter(item => (now - item.timestamp) <= VERIFICATION_WINDOW);
-
-  // 4. Semak jika juri yang SAMA tekan butang yang SAMA dalam buffer
-  const existingIndex = pendingScores.findIndex(
-    item => item.juriId === juriId && item.color === color && item.points === points
-  );
-
-  if (existingIndex !== -1) {
-    // Kemaskini masa jika juri sama tekan butang sama sekali lagi
-    pendingScores[existingIndex].timestamp = now;
-  } else {
-    // Tambah input juri baharu
-    pendingScores.push({ juriId, color, points, timestamp: now });
-  }
-
-  // 5. Cari juri-juri BERBEZA yang tekan warna & mata yang SAMA
-  const matchingPresses = pendingScores.filter(
-    item => item.color === color && item.points === points
-  );
-
-  // Dapatkan bilangan juri UNIK sahaja yang bersetuju
-  const uniqueJuriCount = new Set(matchingPresses.map(item => item.juriId)).size;
-
-  // 6. Syarat: Sekurang-kurangnya 2 JURI UNIK bersetuju
-  if (uniqueJuriCount >= 2) {
-    state.score[color] += points;
-    addLog(`✅ MATA SAH! +${points} untuk SUDUT ${color.toUpperCase()} (${uniqueJuriCount} Juri bersetuju)`);
-
-    // Bersihkan buffer bagi kategori warna & markah ini supaya mata tak naik double
-    pendingScores = pendingScores.filter(
-      item => !(item.color === color && item.points === points)
+    // 3. Semak jika juri yang SAMA menekan butang yang SAMA dalam tetingkap masa ini
+    const existingIndex = pendingScores.findIndex(
+      item => item.juriId === juriId && item.color === color && item.points === points
     );
 
-    // Pancarkan markah terbaru ke TV, Pengadil, dan Juri!
-    io.emit('updateState', state);
-  }
-});
-  
-  // 5. Syarat: Jika 2 atau lebih juri bersetuju
-  if (matchingPresses.length >= 2) {
-    // Tambah markah rasmi
-    state.score[color] += points;
-    addLog(`✅ MATA SAH! +${points} untuk SUDUT ${color.toUpperCase()} (Disokong oleh ${matchingPresses.length} Juri)`);
+    if (existingIndex !== -1) {
+      pendingScores[existingIndex].timestamp = now; // Kemaskini masa
+    } else {
+      pendingScores.push({ juriId, color, points, timestamp: now }); // Simpan entri baharu
+    }
 
-    // Bersihkan buffer bagi kategori ini supaya markah tidak bertambah secara berulang (double count)
-    pendingScores = pendingScores.filter(
-      item => !(item.color === color && item.points === points)
+    // 4. Cari senarai juri yang menekan warna dan markah yang sama
+    const matchingPresses = pendingScores.filter(
+      item => item.color === color && item.points === points
     );
 
-    // Kemaskini keadaan papan markah (TV & Pengadil)
-    io.emit('updateState', state);
-  }
-});
+    // 5. Hitung bilangan juri UNIK (Juri 1, Juri 2, Juri 3)
+    const uniqueJuriCount = new Set(matchingPresses.map(item => item.juriId)).size;
+
+    // 6. SYARAT MAJORITI: Sekurang-kurangnya 2 JURI UNIK bersetuju
+    if (uniqueJuriCount >= 2) {
+      state.score[color] += points;
+      addLog(`✅ MATA SAH! +${points} untuk SUDUT ${color.toUpperCase()} (${uniqueJuriCount} Juri bersetuju)`);
+
+      // Bersihkan buffer bagi kategori warna & markah ini supaya mata tidak bertambah berulang
+      pendingScores = pendingScores.filter(
+        item => !(item.color === color && item.points === points)
+      );
+
+      // Pancarkan markah terbaru ke skrin TV, Pengadil & Juri
+      io.emit('updateState', state);
+    }
+  });
 
   // --- HUKUMAN & PENALTI ---
   socket.on('togglePenalty', ({ color, code, pts }) => {
@@ -297,6 +278,7 @@ socket.on('pressScore', (data) => {
     };
     state.winnerData = null;
     currentVerification = null;
+    pendingScores = []; // Kosongkan rekod tekanan juri apabila reset
     addLog(`🔄 Sistem Direset Keseluruhan`);
     io.emit('updateState', state);
   });
