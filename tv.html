@@ -256,7 +256,7 @@
       });
     });
 
-    // MENYALAKAN LAMPU INDIKATOR JURI & PAPAR SIMBOL SERANGAN
+   // MENYALAKAN LAMPU INDIKATOR JURI & PAPAR SIMBOL SERANGAN
     socket.on('juriPressSignal', (data) => {
       const targetId = data.elementId || `${data.color}_juri_${data.juriId}`;
       const lampElement = document.getElementById(targetId);
@@ -265,9 +265,9 @@
         // Tentukan simbol & warna teks mengikut jenis markah (1 = Pukulan, 2 = Tendangan)
         let symbol = '';
         if (Number(data.points) === 1) {
-          symbol = '🥊'; // Simbol Pukulan
+          symbol = '🥊 +1'; // Simbol Pukulan
         } else if (Number(data.points) === 2) {
-          symbol = '🦶'; // Simbol Tendangan
+          symbol = '🦶 +2'; // Simbol Tendangan
         } else {
           symbol = `+${data.points}`;
         }
