@@ -35,10 +35,8 @@ let juriVotes = {};
 let verificationVotes = [];
 let currentVerifyTarget = { type: '', color: '' };
 const TIME_WINDOW = 1500; // 1.5 saat tetingkap masa penekanan serentak
-
-function startTimer() {
-  // Di dalam fungsi countdown timer anda (contoh):
-function startTimer() {
+ 
+function startTimer() {  // Di dalam fungsi countdown timer anda (contoh):
   timerInterval = setInterval(() => {
     if (state.timer.currentTime > 0) {
       state.timer.currentTime--;
