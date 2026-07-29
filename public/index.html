@@ -1,0 +1,76 @@
+HTML
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Digital Scoring</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    body { font-family: sans-serif; text-align: center; background: #111; color: white; padding: 20px; }
+    .box { border: 1px solid #444; padding: 15px; margin: 15px 0; border-radius: 8px; }
+    button { width: 100%; height: 60px; font-size: 18px; margin: 5px 0; font-weight: bold; cursor: pointer; border-radius: 8px; border: none; }
+    .red { background: #e74c3c; color: white; }
+    .blue { background: #3498db; color: white; }
+    .yellow { background: #f1c40f; color: black; }
+    h1 { font-size: 48px; }
+  </style>
+</head>
+<body>
+
+  <h2>SISTEM DIGITAL SCORING</h2>
+  <h1><span style="color:#3498db" id="blueScore">0</span> - <span style="color:#e74c3c" id="redScore">0</span></h1>
+  <p id="log" style="color: #f1c40f;">Menunggu perlawanan...</p>
+
+  <div class="box">
+    <h3>PANEL JURI</h3>
+    <p>Pilih ID Juri: 
+      <select id="juriId">
+        <option value="1">Juri 1</option>
+        <option value="2">Juri 2</option>
+        <option value="3">Juri 3</option>
+      </select>
+    </p>
+    <button class="blue" onclick="sendPoint('blue')">+1 BIRU</button>
+    <button class="red" onclick="sendPoint('red')">+1 MERAH</button>
+  </div>
+
+  <div class="box">
+    <h3>PANEL KETUA PENGADIL</h3>
+    <button class="yellow" onclick="requestVerification('JATUHAN')">Minta Pengesahan Jatuhan</button>
+    <button class="blue" style="height:40px;" onclick="sendPenalty('blue')">Tolak Mata Biru</button>
+    <button class="red" style="height:40px;" onclick="sendPenalty('red')">Tolak Mata Merah</button>
+  </div>
+
+  <script>
+    const socket = io();
+
+    socket.on('updateScore', (score) => {
+      document.getElementById('blueScore').innerText = score.blue;
+      document.getElementById('redScore').innerText = score.red;
+    });
+
+    socket.on('logMessage', (msg) => {
+      document.getElementById('log').innerText = msg;
+    });
+
+    socket.on('promptVerification', (type) => {
+      const isApproved = confirm(`KETUA PENGADIL MINTA PENGESAHAN: ${type}\nAdakah anda setuju?`);
+      socket.emit('submitVerification', isApproved);
+    });
+
+    function sendPoint(color) {
+      const id = document.getElementById('juriId').value;
+      socket.emit('pressScore', { juriId: id, color: color });
+    }
+
+    function sendPenalty(color) {
+      socket.emit('penalty', color);
+    }
+
+    function requestVerification(type) {
+      socket.emit('requestVerification', type);
+    }
+  </script>
+</body>
+</html>
