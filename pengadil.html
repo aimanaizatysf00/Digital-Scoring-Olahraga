@@ -6,29 +6,58 @@
   <script src="/socket.io/socket.io.js"></script>
   <style>
     body { font-family: sans-serif; background: #181818; color: white; padding: 15px; text-align: center; }
-    .score-display { font-size: 32px; color: #f1c40f; font-weight: bold; margin: 10px 0; background: #000; padding: 10px; border-radius: 10px; }
-    .section-title { font-size: 15px; margin-top: 15px; text-align: left; color: #f1c40f; text-transform: uppercase; font-weight: bold; border-bottom: 1px solid #444; padding-bottom: 5px; }
+    .score-display { font-size: 28px; color: #f1c40f; font-weight: bold; margin: 10px 0; background: #000; padding: 10px; border-radius: 10px; }
+    .section-title { font-size: 14px; margin-top: 15px; text-align: left; color: #f1c40f; text-transform: uppercase; font-weight: bold; border-bottom: 1px solid #444; padding-bottom: 5px; }
     .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
-    button { padding: 10px; font-size: 15px; font-weight: bold; border-radius: 8px; border: none; cursor: pointer; color: white; }
+    button { padding: 10px; font-size: 14px; font-weight: bold; border-radius: 8px; border: none; cursor: pointer; color: white; }
     .blue { background: #2980b9; } .red { background: #c0392b; }
     .blue-add { background: #1f618d; border: 2px solid #3498db; } .red-add { background: #922b21; border: 2px solid #e74c3c; }
+    .yellow { background: #f39c12; color: black; }
+    .purple { background: #8e44ad; }
     .grey { background: #7f8c8d; grid-column: span 2; padding: 12px; margin-top: 15px; }
     #verifyStatus { font-size: 16px; color: #2ecc71; font-weight: bold; min-height: 24px; margin: 5px 0; }
   </style>
 </head>
 <body>
   <h2>PANEL KETUA PENGADIL</h2>
-  <div class="score-display">BIRU: <span id="blueScore">0</span> | MERAH: <span id="redScore">0</span></div>
+  <div class="score-display">
+    <span id="roundText">PUSINGAN 1</span><br>
+    BIRU: <span id="blueScore">0</span> | MERAH: <span id="redScore">0</span>
+  </div>
   <div id="verifyStatus"></div>
 
-  <div class="section-title">PENGESAHAN JATUHAN</div>
+  <div class="section-title">KAWALAN PUSINGAN (AUTO-RESET HUKUMAN)</div>
+  <div class="btn-grid">
+    <button class="purple" onclick="setRound(1)">PUSINGAN 1</button>
+    <button class="purple" onclick="setRound(2)">PUSINGAN 2</button>
+    <button class="purple" style="grid-column: span 2;" onclick="setRound(3)">PUSINGAN 3</button>
+  </div>
+
+  <div class="section-title">🚨 AMARAN / TEGURAN / PERINGATAN</div>
+  <div class="btn-grid">
+    <button class="blue" onclick="triggerPenalty('blue', 'A1', 0)">BIRU: Amaran 1 (0pt)</button>
+    <button class="red" onclick="triggerPenalty('red', 'A1', 0)">MERAH: Amaran 1 (0pt)</button>
+    
+    <button class="blue" onclick="triggerPenalty('blue', 'A2', 0)">BIRU: Amaran 2 (0pt)</button>
+    <button class="red" onclick="triggerPenalty('red', 'A2', 0)">MERAH: Amaran 2 (0pt)</button>
+    
+    <button class="blue" onclick="triggerPenalty('blue', 'T1', -1)">BIRU: Teguran 1 (-1pt)</button>
+    <button class="red" onclick="triggerPenalty('red', 'T1', -1)">MERAH: Teguran 1 (-1pt)</button>
+    
+    <button class="blue" onclick="triggerPenalty('blue', 'T2', -2)">BIRU: Teguran 2 (-2pt)</button>
+    <button class="red" onclick="triggerPenalty('red', 'T2', -2)">MERAH: Teguran 2 (-2pt)</button>
+    
+    <button class="blue" onclick="triggerPenalty('blue', 'P1', -5)">BIRU: Peringatan 1 (-5pt)</button>
+    <button class="red" onclick="triggerPenalty('red', 'P1', -5)">MERAH: Peringatan 1 (-5pt)</button>
+    
+    <button class="blue" onclick="triggerPenalty('blue', 'P2', -10)">BIRU: Peringatan 2 (-10pt)</button>
+    <button class="red" onclick="triggerPenalty('red', 'P2', -10)">MERAH: Peringatan 2 (-10pt)</button>
+  </div>
+
+  <div class="section-title">PENGESAHAN JURI</div>
   <div class="btn-grid">
     <button class="blue" style="padding:12px;" onclick="requestVerification('JATUHAN', 'blue')">JATUHAN BIRU</button>
     <button class="red" style="padding:12px;" onclick="requestVerification('JATUHAN', 'red')">JATUHAN MERAH</button>
-  </div>
-
-  <div class="section-title">PENGESAHAN PELANGGARAN</div>
-  <div class="btn-grid">
     <button class="blue" style="padding:12px;" onclick="requestVerification('PELANGGARAN', 'blue')">PELANGGARAN BIRU</button>
     <button class="red" style="padding:12px;" onclick="requestVerification('PELANGGARAN', 'red')">PELANGGARAN MERAH</button>
   </div>
@@ -43,41 +72,30 @@
     <button class="red-add" onclick="modifyScore('red', 3)">Tambah MERAH +3</button>
     <button class="blue-add" onclick="modifyScore('blue', 5)">Tambah BIRU +5</button>
     <button class="red-add" onclick="modifyScore('red', 5)">Tambah MERAH +5</button>
-    <button class="blue-add" onclick="modifyScore('blue', 10)">Tambah BIRU +10</button>
-    <button class="red-add" onclick="modifyScore('red', 10)">Tambah MERAH +10</button>
   </div>
 
-  <div class="section-title">➖ TOLAK MARKAH (PENALTI)</div>
-  <div class="btn-grid">
-    <button class="blue" onclick="modifyScore('blue', -1)">Tolak BIRU -1</button>
-    <button class="red" onclick="modifyScore('red', -1)">Tolak MERAH -1</button>
-    <button class="blue" onclick="modifyScore('blue', -2)">Tolak BIRU -2</button>
-    <button class="red" onclick="modifyScore('red', -2)">Tolak MERAH -2</button>
-    <button class="blue" onclick="modifyScore('blue', -3)">Tolak BIRU -3</button>
-    <button class="red" onclick="modifyScore('red', -3)">Tolak MERAH -3</button>
-    <button class="blue" onclick="modifyScore('blue', -5)">Tolak BIRU -5</button>
-    <button class="red" onclick="modifyScore('red', -5)">Tolak MERAH -5</button>
-    <button class="blue" onclick="modifyScore('blue', -10)">Tolak BIRU -10</button>
-    <button class="red" onclick="modifyScore('red', -10)">Tolak MERAH -10</button>
-  </div>
-
-  <button class="grey" onclick="resetScore()">RESET MARKAH</button>
+  <button class="grey" onclick="resetScore()">RESET MARKAH TOTAL</button>
 
   <script>
     const socket = io();
-    socket.on('updateScore', (score) => {
-      document.getElementById('blueScore').innerText = score.blue;
-      document.getElementById('redScore').innerText = score.red;
+    socket.on('updateState', (state) => {
+      document.getElementById('blueScore').innerText = state.score.blue;
+      document.getElementById('redScore').innerText = state.score.red;
+      document.getElementById('roundText').innerText = "PUSINGAN " + state.round;
     });
+    
     socket.on('verificationResult', (data) => {
       document.getElementById('verifyStatus').innerText = data.text;
     });
+
     function modifyScore(color, pts) { socket.emit('modifyScore', { color, pts }); }
+    function triggerPenalty(color, code, pts) { socket.emit('triggerPenalty', { color, code, pts }); }
+    function setRound(r) { socket.emit('setRound', r); }
     function requestVerification(type, color) { 
       document.getElementById('verifyStatus').innerText = "Menunggu jawapan Juri...";
       socket.emit('requestVerification', { type, color }); 
     }
-    function resetScore() { if(confirm('Reset semua skor?')) socket.emit('resetScore'); }
+    function resetScore() { if(confirm('Reset semua skor dan pusingan?')) socket.emit('resetScore'); }
   </script>
 </body>
 </html>
