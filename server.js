@@ -37,18 +37,44 @@ let currentVerifyTarget = { type: '', color: '' };
 const TIME_WINDOW = 1500; // 1.5 saat tetingkap masa penekanan serentak
 
 function startTimer() {
-  if (timerInterval) clearInterval(timerInterval);
-  state.timer.isRunning = true;
+  // Di dalam fungsi countdown timer anda (contoh):
+function startTimer() {
   timerInterval = setInterval(() => {
     if (state.timer.currentTime > 0) {
-      state.timer.currentTime -= 1;
+      state.timer.currentTime--;
       io.emit('updateState', state);
     } else {
       clearInterval(timerInterval);
       state.timer.isRunning = false;
       io.emit('updateState', state);
+
+      // KIRA PEMENANG APABILA MASA TAMAT (00:00)
+      let winner = 'DRAW';
+      if (state.score.blue > state.score.red) {
+        winner = 'blue';
+      } else if (state.score.red > state.score.blue) {
+        winner = 'red';
+      }
+
+      // Hantar pop up pemenang khas ke Panel Pengadil
+      io.emit('matchEndedNotification', {
+        winner: winner,
+        blueScore: state.score.blue,
+        redScore: state.score.red
+      });
     }
   }, 1000);
+}
+
+// Tambah Listener untuk Pengadil pamerkan keputusan ke TV
+io.on('connection', (socket) => {
+  
+  socket.on('publishWinnerToTV', (data) => {
+    // Hantar ke Screen TV
+    io.emit('showWinnerOnTV', data);
+  });
+
+});
 }
 
 function pauseTimer() {
