@@ -46,7 +46,7 @@ function addLog(text) {
   io.emit('newLog', `[${timestamp}] ${text}`);
 }
 
-// FUNGSI AUTOMATIK HUKUMAN BERPERINGKAT (ESCALATION)
+// FUNGSI AUTOMATIK HUKUMAN BERPERINGKAT (DENGAN PEMOTONGAN RASMI & MARKAH NEGATIF)
 function applyPenalties(color, penaltyType) {
   if (!state.penalties[color]) {
     state.penalties[color] = { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false };
@@ -61,34 +61,37 @@ function applyPenalties(color, penaltyType) {
 
   if (type === 'AMARAN') {
     if (!p.A1) {
-      p.A1 = true; appliedCode = 'A1'; pointsDeducted = 1;
+      p.A1 = true; appliedCode = 'A1'; pointsDeducted = 0; // Amaran 1: 0 Mata
     } else if (!p.A2) {
-      p.A2 = true; appliedCode = 'A2'; pointsDeducted = 2;
+      p.A2 = true; appliedCode = 'A2'; pointsDeducted = 0; // Amaran 2: 0 Mata
     } else {
       // Amaran 1 & 2 dah ada -> Auto naik ke Teguran
       return applyPenalties(color, 'TEGURAN');
     }
   } else if (type === 'TEGURAN') {
     if (!p.T1) {
-      p.T1 = true; appliedCode = 'T1'; pointsDeducted = 5;
+      p.T1 = true; appliedCode = 'T1'; pointsDeducted = 1; // Teguran 1: -1 Mata
     } else if (!p.T2) {
-      p.T2 = true; appliedCode = 'T2'; pointsDeducted = 10;
+      p.T2 = true; appliedCode = 'T2'; pointsDeducted = 2; // Teguran 2: -2 Mata
     } else {
       // Teguran 1 & 2 dah ada -> Auto naik ke Peringatan
       return applyPenalties(color, 'PERINGATAN');
     }
   } else if (type === 'PERINGATAN') {
     if (!p.P1) {
-      p.P1 = true; appliedCode = 'P1'; pointsDeducted = 15;
+      p.P1 = true; appliedCode = 'P1'; pointsDeducted = 5; // Peringatan 1: -5 Mata
     } else if (!p.P2) {
-      p.P2 = true; appliedCode = 'P2'; isDisqualified = true;
+      p.P2 = true; appliedCode = 'P2'; pointsDeducted = 10; // Peringatan 2: -10 Mata
+    } else {
+      // Peringatan melebihi P2 -> Auto Batal (DQ)
+      isDisqualified = true;
+      appliedCode = 'DQ';
     }
   }
 
-  // Tolak markah daripada skor sudut
+  // Tolak markah daripada skor sudut (Markah Boleh Negatif)
   if (pointsDeducted > 0) {
     state.score[color] -= pointsDeducted;
-    if (state.score[color] < 0) state.score[color] = 0; // Elakkan markah negatif
     state.penaltyPoints[color] += pointsDeducted;
   }
 
@@ -249,7 +252,6 @@ io.on('connection', (socket) => {
       addLog(`🔄 Hukuman Dibatalkan [${color.toUpperCase()}]: ${code}`);
     }
 
-    if (state.score[color] < 0) state.score[color] = 0;
     if (state.penaltyPoints[color] < 0) state.penaltyPoints[color] = 0;
 
     io.emit('updateState', state);
@@ -258,7 +260,6 @@ io.on('connection', (socket) => {
   // --- PELARASAN MARKAH MANUAL ---
   socket.on('modifyScore', ({ color, pts }) => {
     state.score[color] += pts;
-    if (state.score[color] < 0) state.score[color] = 0;
     addLog(`✏️ Markah Manual [${color.toUpperCase()}]: ${pts > 0 ? '+' : ''}${pts}`);
     io.emit('updateState', state);
   });
@@ -304,7 +305,7 @@ io.on('connection', (socket) => {
           const penResult = applyPenalties(color, type);
 
           if (penResult.isDisqualified) {
-            addLog(`❌ DISQUALIFIED: Sudut ${color.toUpperCase()} Dibatalkan (P2)`);
+            addLog(`❌ DISQUALIFIED: Sudut ${color.toUpperCase()} Dibatalkan (DQ)`);
             io.emit('disqualifiedAlert', color);
           } else {
             addLog(`⚠️ ${type} SAH (${penResult.appliedCode}): -${penResult.pointsDeducted} Mata [${color.toUpperCase()}]`);
