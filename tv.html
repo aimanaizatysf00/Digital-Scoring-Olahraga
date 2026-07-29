@@ -187,25 +187,33 @@
       }
       document.getElementById('roundDisplay').innerText = "ROUND " + (state.round || 1);
 
-      // Update Masa
+      // Update Masa & Kawalan Popup Overlay
       if(state.timer) {
         const timerElem = document.getElementById('timerDisplay');
+        const tvOverlay = document.getElementById('tvOverlay');
+        
         timerElem.innerText = formatTime(state.timer.currentTime || 0);
+
         if (state.timer.isRunning) {
           timerElem.classList.remove('paused');
-          document.getElementById('tvOverlay').style.display = 'none'; // Sembunyi popup jika masa berjalan
+          tvOverlay.style.display = 'none'; // Sembunyikan popup jika pemasa berjalan
         } else {
           timerElem.classList.add('paused');
-        }
-
-        // POPUP MASA TAMAT (HANYA MUNCUL APABILA MASA AKHIR = 0)
-        if (state.timer.currentTime === 0 && !state.timer.isRunning) {
-          document.getElementById('tvVerifyTitle').innerText = "⏱️ PERHATIAN ⏱️";
-          document.getElementById('tvVerifyDetail').innerText = "MASA TAMAT";
-          document.getElementById('tvVerifyDetail').style.color = "#e74c3c";
-          document.getElementById('tvVerifyResult').innerText = `ROUND ${state.round} TAMAT`;
-          document.getElementById('tvVerifyResult').className = "overlay-result result-xsah";
-          document.getElementById('tvOverlay').style.display = 'flex';
+          
+          // POPUP MASA TAMAT: Hanya ditunjukkan jika masa 0 DAN tiada pengisytiharan pemenang aktif
+          if (state.timer.currentTime === 0 && !state.winnerData) {
+            document.getElementById('tvVerifyTitle').innerText = "⏱️ PERHATIAN ⏱️";
+            document.getElementById('tvVerifyDetail').innerText = "MASA TAMAT";
+            document.getElementById('tvVerifyDetail').style.color = "#e74c3c";
+            document.getElementById('tvVerifyResult').innerText = `ROUND ${state.round} TAMAT`;
+            document.getElementById('tvVerifyResult').className = "overlay-result result-xsah";
+            tvOverlay.style.display = 'flex';
+          } else {
+            // Sembunyikan popup "MASA TAMAT" sebaik pengadil menukar round / reset masa (> 0)
+            if (tvOverlay.style.display === 'flex' && document.getElementById('tvVerifyDetail').innerText === "MASA TAMAT") {
+              tvOverlay.style.display = 'none';
+            }
+          }
         }
       }
 
@@ -233,19 +241,14 @@
     });
 
     // =========================================================
-    // LOGIK MAJORITI JURI (MINIMA 2 JURI TEKAN BARU MATA NAIK)
+    // KAWALAN LAMPU ISYARAT JURI APABILA BUTANG DITEKAN
     // =========================================================
-    const JURI_WINDOW_MS = 1500; // Selang masa (1.5 saat) untuk juri lain sahkan
-    let activePresses = []; // Menyimpan rekod tekanan juri
-
     socket.on('juriPressSignal', (data) => {
       const color = data.color;
       const juriId = data.juriId;
       const points = Number(data.points);
-      const now = Date.now();
 
-      // 1. Nyalakan indikator lampu juri di TV
-      const targetId = data.elementId || `${color}_juri_${juriId}`;
+      const targetId = `${color}_juri_${juriId}`;
       const lampElement = document.getElementById(targetId);
 
       if (lampElement) {
@@ -259,32 +262,6 @@
           lampElement.innerText = originalText;
           lampElement.classList.remove('active');
         }, 1200);
-      }
-
-      // 2. Tapis butang yang dah tamat tempoh (luar window 1.5s)
-      activePresses = activePresses.filter(p => (now - p.timestamp) <= JURI_WINDOW_MS);
-
-      // 3. Rekodkan atau kemaskini input dari Juri ini
-      const existingIndex = activePresses.findIndex(p => p.color === color && p.juriId === juriId);
-      if (existingIndex !== -1) {
-        activePresses[existingIndex] = { color, juriId, points, timestamp: now };
-      } else {
-        activePresses.push({ color, juriId, points, timestamp: now });
-      }
-
-      // 4. Kira berapa ramai juri yang tekan MATA SAMA untuk SUDUT SAMA
-      const matchingPresses = activePresses.filter(p => p.color === color && p.points === points);
-
-      // 5. Sekiranya sekurang-kurangnya 2 JURI menekan butang yang sama:
-      if (matchingPresses.length >= 2) {
-        // Hantar isyarat tambah skor ke Server melalui Socket.IO
-        socket.emit('addScoreFromMajority', {
-          color: color,
-          points: points
-        });
-
-        // Kosongkan rekod tekanan sudut ini supaya tidak menambah skor berulang kali
-        activePresses = activePresses.filter(p => !(p.color === color && p.points === points));
       }
     });
 
