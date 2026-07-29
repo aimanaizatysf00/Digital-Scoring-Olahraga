@@ -3,390 +3,184 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Panel Ketua Pengadil - Silat Olahraga</title>
+  <title>Panel Pengadil - Sistem Silat</title>
   <script src="/socket.io/socket.io.js"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    body { background: #0f1115; color: #e1e6ed; padding: 12px; text-align: center; max-width: 900px; margin: 0 auto; }
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background: #121212; color: #ffffff; margin: 0; padding: 15px; }
 
-    /* HEADER & STATUS UTAMA */
-    .header-card { background: #161b22; border: 1px solid #30363d; padding: 12px; border-radius: 10px; margin-bottom: 12px; }
-    .header-title { font-size: 16px; font-weight: 800; color: #f1c40f; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
-    .score-display { font-size: 22px; color: #f1c40f; font-weight: bold; background: #0d1117; padding: 10px; border-radius: 8px; border: 1px solid #21262d; display: flex; justify-content: space-around; align-items: center; }
-    .timer-big { font-size: 32px; color: #2ecc71; /* Hijau terang */; font-family: 'Courier New', Courier, monospace; font-weight: 900; }
-    .timer-big.paused { color: #f39c12; /* Oren terang */; animation: blink 1.2s infinite; }
-    @keyframes blink { 50% { opacity: 0.5; } }
+    h1, h2, h3, h4 { margin: 5px 0; text-align: center; }
+    .header-title { color: #f1c40f; text-transform: uppercase; margin-bottom: 15px; }
 
-    /* TAJUK BAHAGIAN (SECTION HEADER) */
-    .section-title { font-size: 11px; font-weight: 800; color: #8b949e; text-transform: uppercase; letter-spacing: 1px; text-align: left; margin: 14px 0 6px 2px; display: flex; align-items: center; gap: 6px; }
+    /* LAYOUT UTAMA */
+    .container { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    .full-width { grid-column: span 2; }
 
-    /* CONTAINER KAD (CARD SECTION) */
-    .card-panel { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 10px; margin-bottom: 10px; }
+    .card { background: #1e1e1e; border-radius: 10px; padding: 15px; border: 1px solid #333; }
 
-    /* LAYOUT 2-KOLUM (BIRU VS MERAH) */
-    .two-col-container { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .side-box { background: #0d1117; padding: 8px; border-radius: 8px; border: 1px solid #30363d; display: flex; flex-direction: column; gap: 6px; }
-    .side-box.blue-box { border-color: #1f6feb; }
-    .side-box.red-box { border-color: #da3633; }
-    .box-title { font-size: 11px; font-weight: 800; text-transform: uppercase; padding-bottom: 4px; border-bottom: 1px solid #21262d; margin-bottom: 2px; }
+    /* KAWALAN MASA & ROUND */
+    .timer-card { text-align: center; background: #0d1117; border: 2px solid #30363d; }
+    .timer-display { font-size: 3.5rem; font-family: monospace; font-weight: bold; color: #2ecc71; margin: 10px 0; }
+    .timer-display.paused { color: #e67e22; }
 
-    /* INPUT GRID */
-    .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-    input { padding: 8px 10px; font-size: 11px; border-radius: 6px; border: 1px solid #30363d; background: #0d1117; color: #c9d1d9; width: 100%; outline: none; }
-    input:focus { border-color: #58a6ff; }
+    .btn { padding: 12px 20px; font-size: 1rem; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; transition: 0.2s; text-transform: uppercase; }
+    .btn:active { transform: scale(0.96); }
 
-    /* BUTTON GRIDS */
-    .btn-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-    .btn-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-    .btn-grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+    .btn-success { background: #2ecc71; color: #fff; }
+    .btn-warning { background: #f39c12; color: #fff; }
+    .btn-danger { background: #e74c3c; color: #fff; }
+    .btn-info { background: #3498db; color: #fff; }
+    .btn-dark { background: #34495e; color: #fff; }
 
-    /* ASAS BUTANG */
-    button { padding: 9px 4px; font-size: 11px; font-weight: bold; border-radius: 6px; border: 1px solid transparent; cursor: pointer; color: white; transition: all 0.15s ease-in-out; }
-    button:active { transform: scale(0.97); }
+    .controls-row { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
 
-    /* TEMA WARNA BUTANG */
-    .btn-green { background: #238636; border-color: #2ea043; color: white; }
-    .btn-green:hover { background: #2ea043; }
-    .btn-yellow { background: #d29922; border-color: #bb8009; color: #0d1117; font-weight: 800; }
-    .btn-yellow:hover { background: #e3b341; }
-    .btn-purple { background: #8957e5; border-color: #9e6a00; color: white; }
-    .btn-purple:hover { background: #9e6a00; }
+    /* INFO PERLAWANAN FORM */
+    .form-group { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 10px; }
+    .form-group input { background: #2a2a2a; border: 1px solid #444; color: #fff; padding: 8px 12px; border-radius: 5px; font-size: 0.9rem; }
 
-    /* BUTANG SUDUT BIRU & MERAH */
-    .btn-blue { background: #1f6feb; border-color: #388bfd; }
-    .btn-blue:hover { background: #388bfd; }
-    .btn-red { background: #da3633; border-color: #f85149; }
-    .btn-red:hover { background: #f85149; }
+    /* KAWALAN SUDUT BIRU & MERAH */
+    .corner-title { font-size: 1.4rem; padding: 8px; border-radius: 6px; margin-bottom: 10px; text-align: center; font-weight: bold; }
+    .blue-corner { border: 2px solid #0080ff; }
+    .blue-title { background: #0080ff; color: #fff; }
+    .red-corner { border: 2px solid #d32f2f; }
+    .red-title { background: #d32f2f; color: #fff; }
 
-    /* PELARASAN MARKAH */
-    .blue-add { background: #0d419d; border-color: #1f6feb; }
-    .blue-sub { background: #082860; border-color: #1158c7; color: #8b949e; }
-    .red-add { background: #8e1519; border-color: #da3633; }
-    .red-sub { background: #4e0a0c; border-color: #a8221f; color: #8b949e; }
+    .score-display-box { font-size: 3rem; font-weight: bold; text-align: center; margin: 10px 0; }
 
-    /* REKA BENTUK KOTAK HUKUMAN */
-    .penalty-section {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      margin-top: 4px;
-    }
-    
-    .penalty-group {
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-    }
+    /* BUTANG PENALTI & MODIFIKASI */
+    .penalty-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 15px; }
+    .btn-penalty { background: #2c3e50; color: #fff; border: 1px solid #455a64; padding: 10px; font-size: 0.85rem; border-radius: 5px; cursor: pointer; }
+    .btn-penalty.active { background: #e74c3c; color: #fff; border-color: #fff; box-shadow: 0 0 10px #e74c3c; }
 
-    .penalty-group-title {
-      font-size: 9px;
-      font-weight: 800;
-      color: #8b949e;
-      text-transform: uppercase;
-      text-align: center;
-      letter-spacing: 0.5px;
-    }
+    /* LOG PERLAWANAN */
+    .log-box { background: #0a0a0a; color: #00ffcc; font-family: monospace; height: 160px; overflow-y: auto; padding: 10px; border-radius: 6px; border: 1px solid #333; font-size: 0.85rem; }
+    .log-box p { margin: 3px 0; border-bottom: 1px solid #1a1a1a; padding-bottom: 2px; }
 
-    .penalty-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 5px;
-    }
-
-    .btn-penalty {
-      background: #161b22;
-      border: 1px solid #30363d;
-      color: #c9d1d9;
-      padding: 8px 2px;
-      font-size: 11px;
-      font-weight: 800;
-      border-radius: 6px;
-      text-align: center;
-      transition: all 0.2s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-    }
-
-    /* TAMPILAN APABILA HUKUMAN AKTIF */
-    .btn-penalty.active-p {
-      background: #da3633 !important;
-      border-color: #f1c40f !important;
-      color: #ffffff !important;
-      font-weight: 900;
-      box-shadow: 0 0 10px rgba(218, 54, 51, 0.7);
-    }
-
-    .btn-danger { background: #21262d; border-color: #da3633; color: #f85149; width: 100%; padding: 12px; margin-top: 10px; font-size: 12px; font-weight: 800; }
-    .btn-danger:hover { background: #da3633; color: white; }
-
-    #verifyStatus { font-size: 13px; color: #2ecc71; font-weight: bold; min-height: 18px; margin-top: 6px; }
-    .sub-label { font-size: 9px; color: #8b949e; text-align: left; margin: 3px 0 1px 0; font-weight: bold; }
+    /* POPUP OVERLAY VERIFICATION */
+    #verifyOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 999; justify-content: center; align-items: center; }
+    .verify-card { background: #1e1e1e; padding: 25px; border-radius: 12px; border: 3px solid #f1c40f; text-align: center; max-width: 400px; width: 90%; }
   </style>
 </head>
-  <!-- POPUP MASA TAMAT (PENGADIL) -->
-<div id="refereeWinnerModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999; justify-content:center; align-items:center;">
-  <div style="background:#161b22; border:2px solid #f1c40f; border-radius:12px; padding:25px; width:90%; max-width:450px; text-align:center; box-shadow:0 0 20px rgba(0,0,0,0.8);">
-    <h2 style="color:#f1c40f; font-size:22px; margin-bottom:10px;">⏰ MASA PERLAWANAN TAMAT!</h2>
-    <hr style="border-color:#30363d; margin-bottom:15px;">
-    
-    <div id="refWinnerMsg" style="font-size:18px; font-weight:bold; margin-bottom:15px;">
-      <!-- Teks Keputusan Dikesan Secara Automatik -->
-    </div>
-
-    <div style="display:flex; gap:10px; justify-content:center;">
-      <button onclick="sendWinnerToTV()" style="background:#238636; border:1px solid #2ea043; color:white; padding:12px 20px; font-weight:bold; border-radius:8px; cursor:pointer; flex:1;">
-        📺 PAMERKAN RESULT DI TV
-      </button>
-      <button onclick="closeRefModal()" style="background:#21262d; border:1px solid #30363d; color:#c9d1d9; padding:12px 15px; font-weight:bold; border-radius:8px; cursor:pointer;">
-        BATAL
-      </button>
-    </div>
-  </div>
-</div>
 <body>
 
-  <!-- HEADER -->
-  <div class="header-card">
-    <div class="header-title">PANEL KETUA PENGADIL</div>
-    <div class="score-display">
-      <span style="color:#1f6feb;">BIRU: <span id="blueScore">0</span></span>
-      <div>
-        <span id="roundText" style="font-size: 12px; color: #8b949e; display: block;">ROUND 1</span>
-        <span id="timerText" class="timer-big">01:30</span>
-      </div>
-      <span style="color:#da3633;">MERAH: <span id="redScore">0</span></span>
-    </div>
-    <div id="verifyStatus"></div>
-  </div>
+  <h2 class="header-title">📋 PANEL KAWALAN PENGADIL / KETUA PERTANDINGAN</h2>
 
-  <!-- MAKLUMAT PERTANDINGAN -->
-  <div class="section-title">📝 MAKLUMAT PERTANDINGAN & PESERTA</div>
-  <div class="card-panel">
-    <div class="input-grid" style="margin-bottom: 8px;">
-      <input type="text" id="inpClass" placeholder="Class (cth: CLASS A)">
-      <input type="number" id="inpMatch" placeholder="No. Match (cth: 57)">
-      <input type="text" id="inpBlueName" placeholder="Pesilat Biru">
-      <input type="text" id="inpRedName" placeholder="Pesilat Merah">
-      <input type="text" id="inpBlueTeam" placeholder="Kontinjen Biru">
-      <input type="text" id="inpRedTeam" placeholder="Kontinjen Merah">
-    </div>
-    <button class="btn-purple" style="width:100%;" onclick="updateMatchDetails()">KEMASKINI MAKLUMAT</button>
-  </div>
-
-  <!-- KAWALAN MASA & PUSINGAN -->
-  <div class="two-col-container">
-    <div>
-      <div class="section-title">⏱️ KAWALAN MASA</div>
-      <div class="card-panel">
-        <div class="btn-grid-2" style="margin-bottom: 6px;">
-          <button class="btn-green" onclick="controlTimer('start')">▶️ MULA</button>
-          <button class="btn-yellow" onclick="controlTimer('pause')">⏸️ HENTI</button>
-        </div>
-        <div class="btn-grid-2">
-          <button class="btn-purple" onclick="setTimerDuration(90)">1:30 Min</button>
-          <button class="btn-purple" onclick="setTimerDuration(120)">2:00 Min</button>
-        </div>
-      </div>
-    </div>
-
-    <div>
-      <div class="section-title">🔄 KAWALAN PUSINGAN</div>
-      <div class="card-panel">
-        <div class="btn-grid-3" style="height: 100%;">
-          <button class="btn-purple" onclick="setRound(1)">PUSINGAN 1</button>
-          <button class="btn-purple" onclick="setRound(2)">PUSINGAN 2</button>
-          <button class="btn-purple" onclick="setRound(3)">PUSINGAN 3</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- PENETAP KOTAK HUKUMAN MANUAL -->
-  <div class="section-title">🚨 PENETAP KOTAK HUKUMAN (MANUAL TOGGLE)</div>
-  <div class="card-panel">
-    <div class="two-col-container">
+  <div class="container">
+    
+    <!-- KAWALAN MASA & ROUND (SPAN 2) -->
+    <div class="card timer-card full-width">
+      <h3>PUSINGAN & PEMASA</h3>
+      <div class="timer-display paused" id="timerDisplay">01:30</div>
       
-      <!-- BIRU -->
-      <div class="side-box blue-box">
-        <div class="box-title" style="color:#58a6ff;">🔵 HUKUMAN BIRU</div>
-        <div class="penalty-section">
-          
-          <!-- 1. AMARAN -->
-          <div class="penalty-group">
-            <div class="penalty-group-title">AMARAN</div>
-            <div class="penalty-grid">
-              <button class="btn-penalty" id="btn_blue_A1" title="Amaran 1" onclick="togglePenalty('blue', 'A1', 0)">👈</button>
-              <button class="btn-penalty" id="btn_blue_A2" title="Amaran 2" onclick="togglePenalty('blue', 'A2', 0)">👈✌️</button>
-            </div>
-          </div>
-
-          <!-- 2. TEGURAN -->
-          <div class="penalty-group">
-            <div class="penalty-group-title">TEGURAN</div>
-            <div class="penalty-grid">
-              <button class="btn-penalty" id="btn_blue_T1" title="Teguran 1 (-1)" onclick="togglePenalty('blue', 'T1', -1)">☝️ (-1)</button>
-              <button class="btn-penalty" id="btn_blue_T2" title="Teguran 2 (-2)" onclick="togglePenalty('blue', 'T2', -2)">✌️ (-2)</button>
-            </div>
-          </div>
-
-          <!-- 3. PERINGATAN -->
-          <div class="penalty-group">
-            <div class="penalty-group-title">PERINGATAN</div>
-            <div class="penalty-grid">
-              <button class="btn-penalty" id="btn_blue_P1" title="Peringatan 1 (-5)" onclick="togglePenalty('blue', 'P1', -5)">🙅‍♂️ (-5)</button>
-              <button class="btn-penalty" id="btn_blue_P2" title="Peringatan 2 (-10)" onclick="togglePenalty('blue', 'P2', -10)">🙅‍♂️🙅‍♂️ (-10)</button>
-            </div>
-          </div>
-
-        </div>
+      <div class="controls-row">
+        <button class="btn btn-success" onclick="controlTimer('start')">▶️ MULA (START)</button>
+        <button class="btn btn-warning" onclick="controlTimer('pause')">⏸️ HENTI (PAUSE)</button>
+        <button class="btn btn-dark" onclick="setTimerDuration(90)">01:30</button>
+        <button class="btn btn-dark" onclick="setTimerDuration(120)">02:00</button>
       </div>
 
-      <!-- MERAH -->
-      <div class="side-box red-box">
-        <div class="box-title" style="color:#f85149;">🔴 HUKUMAN MERAH</div>
-        <div class="penalty-section">
-          
-          <!-- 1. AMARAN -->
-          <div class="penalty-group">
-            <div class="penalty-group-title">AMARAN</div>
-            <div class="penalty-grid">
-              <button class="btn-penalty" id="btn_red_A1" title="Amaran 1" onclick="togglePenalty('red', 'A1', 0)">👈</button>
-              <button class="btn-penalty" id="btn_red_A2" title="Amaran 2" onclick="togglePenalty('red', 'A2', 0)">👈✌️</button>
-            </div>
-          </div>
-
-          <!-- 2. TEGURAN -->
-          <div class="penalty-group">
-            <div class="penalty-group-title">TEGURAN</div>
-            <div class="penalty-grid">
-              <button class="btn-penalty" id="btn_red_T1" title="Teguran 1 (-1)" onclick="togglePenalty('red', 'T1', -1)">☝️ (-1)</button>
-              <button class="btn-penalty" id="btn_red_T2" title="Teguran 2 (-2)" onclick="togglePenalty('red', 'T2', -2)">✌️ (-2)</button>
-            </div>
-          </div>
-
-          <!-- 3. PERINGATAN -->
-          <div class="penalty-group">
-            <div class="penalty-group-title">PERINGATAN</div>
-            <div class="penalty-grid">
-              <button class="btn-penalty" id="btn_red_P1" title="Peringatan 1 (-5)" onclick="togglePenalty('red', 'P1', -5)">🙅‍♂️ (-5)</button>
-              <button class="btn-penalty" id="btn_red_P2" title="Peringatan 2 (-10)" onclick="togglePenalty('red', 'P2', -10)">🙅‍♂️🙅‍♂️ (-10)</button>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- PELARASAN MARKAH MANUAL -->
-  <div class="section-title">➕ / ➖ PELARASAN MARKAH MANUAL</div>
-  <div class="card-panel">
-    <div class="two-col-container">
-      <!-- BIRU -->
-      <div class="side-box blue-box">
-        <div class="box-title" style="color:#58a6ff;">🔵 SUDUT BIRU</div>
-        <div class="sub-label">TAMBAH MATA (+)</div>
-        <div class="btn-grid-5">
-          <button class="blue-add" onclick="modifyScore('blue', 1)">+1</button>
-          <button class="blue-add" onclick="modifyScore('blue', 2)">+2</button>
-          <button class="blue-add" onclick="modifyScore('blue', 3)">+3</button>
-          <button class="blue-add" onclick="modifyScore('blue', 5)">+5</button>
-          <button class="blue-add" onclick="modifyScore('blue', 10)">+10</button>
-        </div>
-        <div class="sub-label">TOLAK MATA (-)</div>
-        <div class="btn-grid-5">
-          <button class="blue-sub" onclick="modifyScore('blue', -1)">-1</button>
-          <button class="blue-sub" onclick="modifyScore('blue', -2)">-2</button>
-          <button class="blue-sub" onclick="modifyScore('blue', -3)">-3</button>
-          <button class="blue-sub" onclick="modifyScore('blue', -5)">-5</button>
-          <button class="blue-sub" onclick="modifyScore('blue', -10)">-10</button>
-        </div>
-      </div>
-
-      <!-- MERAH -->
-      <div class="side-box red-box">
-        <div class="box-title" style="color:#f85149;">🔴 SUDUT MERAH</div>
-        <div class="sub-label">TAMBAH MATA (+)</div>
-        <div class="btn-grid-5">
-          <button class="red-add" onclick="modifyScore('red', 1)">+1</button>
-          <button class="red-add" onclick="modifyScore('red', 2)">+2</button>
-          <button class="red-add" onclick="modifyScore('red', 3)">+3</button>
-          <button class="red-add" onclick="modifyScore('red', 5)">+5</button>
-          <button class="red-add" onclick="modifyScore('red', 10)">+10</button>
-        </div>
-        <div class="sub-label">TOLAK MATA (-)</div>
-        <div class="btn-grid-5">
-          <button class="red-sub" onclick="modifyScore('red', -1)">-1</button>
-          <button class="red-sub" onclick="modifyScore('red', -2)">-2</button>
-          <button class="red-sub" onclick="modifyScore('red', -3)">-3</button>
-          <button class="red-sub" onclick="modifyScore('red', -5)">-5</button>
-          <button class="red-sub" onclick="modifyScore('red', -10)">-10</button>
-        </div>
+      <div class="controls-row" style="margin-top: 15px;">
+        <button class="btn btn-info" onclick="setRound(1)">ROUND 1</button>
+        <button class="btn btn-info" onclick="setRound(2)">ROUND 2</button>
+        <button class="btn btn-info" onclick="setRound(3)">ROUND 3</button>
       </div>
     </div>
-  </div>
 
-  <!-- PENGESAHAN JURI -->
-  <div class="section-title">⚖️ PENGESAHAN JURI (JATUHAN & PELANGGARAN)</div>
-  <div class="card-panel">
-    <div class="two-col-container">
-      <!-- BIRU -->
-      <div class="side-box blue-box">
-        <div class="box-title" style="color:#58a6ff;">🔵 MOHON PENGESAHAN BIRU</div>
-        <button class="btn-blue" onclick="requestVerification('JATUHAN', 'blue')">💥 JATUHAN BIRU</button>
-        <button class="btn-blue" onclick="requestVerification('AMARAN', 'blue')">👈 AMARAN BIRU</button>
-        <button class="btn-blue" onclick="requestVerification('TEGURAN', 'blue')">☝️ TEGURAN BIRU (-1/-2)</button>
-        <button class="btn-blue" onclick="requestVerification('PERINGATAN', 'blue')">🙅‍♂️ PERINGATAN BIRU (-5/-10)</button>
+    <!-- MAKLUMAT PESERTA & MATCH (SPAN 2) -->
+    <div class="card full-width">
+      <h4>MAKLUMAT PERLAWANAN</h4>
+      <div class="form-group">
+        <input type="text" id="className" placeholder="Kelas (cth: CLASS A)" value="CLASS A">
+        <input type="text" id="matchNo" placeholder="No. Match (cth: 1)" value="1">
+        <button class="btn btn-info" onclick="updateMatchDetails()">KEMASKINI INFO</button>
       </div>
-
-      <!-- MERAH -->
-      <div class="side-box red-box">
-        <div class="box-title" style="color:#f85149;">🔴 MOHON PENGESAHAN MERAH</div>
-        <button class="btn-red" onclick="requestVerification('JATUHAN', 'red')">💥 JATUHAN MERAH</button>
-        <button class="btn-red" onclick="requestVerification('AMARAN', 'red')">👈 AMARAN MERAH</button>
-        <button class="btn-red" onclick="requestVerification('TEGURAN', 'red')">☝️ TEGURAN MERAH (-1/-2)</button>
-        <button class="btn-red" onclick="requestVerification('PERINGATAN', 'red')">🙅‍♂️ PERINGATAN MERAH (-5/-10)</button>
+      <div class="form-group">
+        <input type="text" id="blueName" placeholder="Nama Pesilat Biru" value="PESILAT BIRU">
+        <input type="text" id="blueTeam" placeholder="Kontinjen Biru" value="KONTINJEN BIRU">
+        <div></div>
+      </div>
+      <div class="form-group">
+        <input type="text" id="redName" placeholder="Nama Pesilat Merah" value="PESILAT MERAH">
+        <input type="text" id="redTeam" placeholder="Kontinjen Merah" value="KONTINJEN MERAH">
+        <div></div>
       </div>
     </div>
-  </div>
 
-  <!-- RESET -->
-  <button class="btn-danger" onclick="resetScore()">⚠️ RESET KESELURUHAN PERTANDINGAN</button>
+    <!-- KAWALAN SUDUT BIRU -->
+    <div class="card blue-corner">
+      <div class="corner-title blue-title">SUDUT BIRU</div>
+      <div class="score-display-box" id="blueScore">0</div>
+
+      <h4>HUKUMAN (PENALTI)</h4>
+      <div class="penalty-grid">
+        <button class="btn-penalty" id="btn_blue_A1" onclick="togglePenalty('blue', 'A1', 0)">Amaran 1 (A1)</button>
+        <button class="btn-penalty" id="btn_blue_A2" onclick="togglePenalty('blue', 'A2', 0)">Amaran 2 (A2)</button>
+        <button class="btn-penalty" id="btn_blue_T1" onclick="togglePenalty('blue', 'T1', -1)">Teguran 1 (-1)</button>
+        <button class="btn-penalty" id="btn_blue_T2" onclick="togglePenalty('blue', 'T2', -2)">Teguran 2 (-2)</button>
+        <button class="btn-penalty" id="btn_blue_P1" onclick="togglePenalty('blue', 'P1', -5)">Peringatan 1 (-5)</button>
+        <button class="btn-penalty" id="btn_blue_P2" onclick="togglePenalty('blue', 'P2', -10)">Peringatan 2 (-10)</button>
+      </div>
+
+      <h4>PELARASAN MARKAH MANUAL</h4>
+      <div class="controls-row">
+        <button class="btn btn-info" onclick="modifyScore('blue', 1)">+1</button>
+        <button class="btn btn-info" onclick="modifyScore('blue', 2)">+2</button>
+        <button class="btn btn-danger" onclick="modifyScore('blue', -1)">-1</button>
+        <button class="btn btn-danger" onclick="modifyScore('blue', -2)">-2</button>
+      </div>
+
+      <div style="margin-top: 15px; text-align: center;">
+        <button class="btn btn-warning" onclick="requestVerification('AMARAN', 'blue')">Minta Pengesahan Amaran</button>
+      </div>
+    </div>
+
+    <!-- KAWALAN SUDUT MERAH -->
+    <div class="card red-corner">
+      <div class="corner-title red-title">SUDUT MERAH</div>
+      <div class="score-display-box" id="redScore">0</div>
+
+      <h4>HUKUMAN (PENALTI)</h4>
+      <div class="penalty-grid">
+        <button class="btn-penalty" id="btn_red_A1" onclick="togglePenalty('red', 'A1', 0)">Amaran 1 (A1)</button>
+        <button class="btn-penalty" id="btn_red_A2" onclick="togglePenalty('red', 'A2', 0)">Amaran 2 (A2)</button>
+        <button class="btn-penalty" id="btn_red_T1" onclick="togglePenalty('red', 'T1', -1)">Teguran 1 (-1)</button>
+        <button class="btn-penalty" id="btn_red_T2" onclick="togglePenalty('red', 'T2', -2)">Teguran 2 (-2)</button>
+        <button class="btn-penalty" id="btn_red_P1" onclick="togglePenalty('red', 'P1', -5)">Peringatan 1 (-5)</button>
+        <button class="btn-penalty" id="btn_red_P2" onclick="togglePenalty('red', 'P2', -10)">Peringatan 2 (-10)</button>
+      </div>
+
+      <h4>PELARASAN MARKAH MANUAL</h4>
+      <div class="controls-row">
+        <button class="btn btn-info" onclick="modifyScore('red', 1)">+1</button>
+        <button class="btn btn-info" onclick="modifyScore('red', 2)">+2</button>
+        <button class="btn btn-danger" onclick="modifyScore('red', -1)">-1</button>
+        <button class="btn btn-danger" onclick="modifyScore('red', -2)">-2</button>
+      </div>
+
+      <div style="margin-top: 15px; text-align: center;">
+        <button class="btn btn-warning" onclick="requestVerification('AMARAN', 'red')">Minta Pengesahan Amaran</button>
+      </div>
+    </div>
+
+    <!-- LOG PERLAWANAN & BUTANG KAWALAN UTAMA (SPAN 2) -->
+    <div class="card full-width">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h4 style="margin: 0;">📜 REKOD LOG PERLAWANAN</h4>
+        <button class="btn btn-dark" onclick="downloadLog()" style="font-size: 0.8rem; padding: 6px 12px;">📥 MUAT TURUN LOG (.TXT)</button>
+      </div>
+      <div class="log-box" id="logList"></div>
+
+      <div class="controls-row" style="margin-top: 20px;">
+        <button class="btn btn-success" style="font-size: 1.1rem; padding: 15px 30px;" onclick="publishWinner()">🏆 PAPAR PEMENANG DI SKRIN TV</button>
+        <button class="btn btn-danger" onclick="resetAll()">🔄 RESET KESELURUHAN</button>
+      </div>
+    </div>
+
+  </div>
 
   <script>
     const socket = io();
-    let currentWinnerData = null;
-
-// Menerima Isyarat Masa Tamat dari Server
-socket.on('matchEndedNotification', (data) => {
-  currentWinnerData = data;
-  const msgElem = document.getElementById('refWinnerMsg');
-  
-  if (data.winner === 'blue') {
-    msgElem.innerHTML = `<span style="color:#58a6ff;">PEMENANG: SUDUT BIRU</span><br><small style="color:#8b949e;">Skor: ${data.blueScore} - ${data.redScore}</small>`;
-  } else if (data.winner === 'red') {
-    msgElem.innerHTML = `<span style="color:#f85149;">PEMENANG: SUDUT MERAH</span><br><small style="color:#8b949e;">Skor: ${data.blueScore} - ${data.redScore}</small>`;
-  } else {
-    msgElem.innerHTML = `<span style="color:#f1c40f;">KEPUTUSAN: SERI (DRAW)</span><br><small style="color:#8b949e;">Skor: ${data.blueScore} - ${data.redScore}</small>`;
-  }
-
-  document.getElementById('refereeWinnerModal').style.display = 'flex';
-});
-
-// Fungsi Tekan Butang Hantar ke TV
-function sendWinnerToTV() {
-  if (currentWinnerData) {
-    socket.emit('publishWinnerToTV', currentWinnerData);
-    closeRefModal();
-  }
-}
-
-function closeRefModal() {
-  document.getElementById('refereeWinnerModal').style.display = 'none';
-}
+    let currentLogs = [];
 
     function formatTime(seconds) {
       const m = Math.floor(seconds / 60).toString().padStart(2, '0');
@@ -394,52 +188,119 @@ function closeRefModal() {
       return `${m}:${s}`;
     }
 
+    // UPDATE DARI SERVER
     socket.on('updateState', (state) => {
-      document.getElementById('blueScore').innerText = state.score.blue;
-      document.getElementById('redScore').innerText = state.score.red;
-      document.getElementById('roundText').innerText = "ROUND " + state.round;
+      if (!state) return;
 
       // Update Masa
-      const timerElem = document.getElementById('timerText');
+      const timerElem = document.getElementById('timerDisplay');
       timerElem.innerText = formatTime(state.timer.currentTime);
       if (state.timer.isRunning) timerElem.classList.remove('paused');
       else timerElem.classList.add('paused');
 
-      // Sync status butang hukuman aktif
-      const penalties = ['A1', 'A2', 'T1', 'T2', 'P1', 'P2'];
+      // Update Markah
+      document.getElementById('blueScore').innerText = state.score.blue;
+      document.getElementById('redScore').innerText = state.score.red;
+
+      // Update Status Butang Penalti
+      const penaltyCodes = ['A1', 'A2', 'T1', 'T2', 'P1', 'P2'];
       ['blue', 'red'].forEach(color => {
-        penalties.forEach(p => {
-          const btn = document.getElementById(`btn_${color}_${p}`);
-          if (btn && state.penalties[color][p]) btn.classList.add('active-p');
-          else if (btn) btn.classList.remove('active-p');
+        penaltyCodes.forEach(code => {
+          const btn = document.getElementById(`btn_${color}_${code}`);
+          if (btn && state.penalties && state.penalties[color]) {
+            if (state.penalties[color][code]) {
+              btn.classList.add('active');
+            } else {
+              btn.classList.remove('active');
+            }
+          }
         });
       });
     });
 
-    socket.on('verificationResult', (data) => {
-      document.getElementById('verifyStatus').innerText = data.text;
-      setTimeout(() => { document.getElementById('verifyStatus').innerText = ''; }, 5000);
+    // MASUKKAN LOG BAHARU
+    socket.on('newLog', (logText) => {
+      currentLogs.unshift(logText);
+      const logList = document.getElementById('logList');
+      if (logList) {
+        const p = document.createElement('p');
+        p.innerText = logText;
+        logList.insertBefore(p, logList.firstChild);
+      }
     });
+
+    // FUNGSI KAWALAN PENGADIL
+    function controlTimer(action) {
+      socket.emit('controlTimer', action);
+    }
+
+    function setTimerDuration(seconds) {
+      socket.emit('setTimerDuration', seconds);
+    }
+
+    function setRound(roundNum) {
+      socket.emit('setRound', roundNum);
+    }
 
     function updateMatchDetails() {
       const data = {
-        className: document.getElementById('inpClass').value || 'CLASS A',
-        matchNo: document.getElementById('inpMatch').value || '1',
-        blueName: document.getElementById('inpBlueName').value || 'PESILAT BIRU',
-        redName: document.getElementById('inpRedName').value || 'PESILAT MERAH',
-        blueTeam: document.getElementById('inpBlueTeam').value || 'KONTINJEN BIRU',
-        redTeam: document.getElementById('inpRedTeam').value || 'KONTINJEN MERAH',
+        className: document.getElementById('className').value,
+        matchNo: document.getElementById('matchNo').value,
+        blueName: document.getElementById('blueName').value,
+        blueTeam: document.getElementById('blueTeam').value,
+        redName: document.getElementById('redName').value,
+        redTeam: document.getElementById('redTeam').value
       };
       socket.emit('updateMatchDetails', data);
+      alert('Info Perlawanan Dikemaskini!');
     }
 
-    function modifyScore(color, pts) { socket.emit('modifyScore', { color, pts }); }
-    function togglePenalty(color, code, pts) { socket.emit('togglePenalty', { color, code, pts }); }
-    function setRound(r) { socket.emit('setRound', r); }
-    function controlTimer(action) { socket.emit('controlTimer', action); }
-    function setTimerDuration(seconds) { socket.emit('setTimerDuration', seconds); }
-    function requestVerification(type, color) { socket.emit('requestVerification', { type, color }); }
-    function resetScore() { if(confirm('Reset semua skor dan pertandingan?')) socket.emit('resetScore'); }
+    function togglePenalty(color, code, pts) {
+      socket.emit('togglePenalty', { color, code, pts });
+    }
+
+    function modifyScore(color, pts) {
+      socket.emit('modifyScore', { color, pts });
+    }
+
+    function requestVerification(type, color) {
+      socket.emit('requestVerification', { type, color });
+      alert(`Mengarahkan Juri membuat semakan pengesahan ${type} untuk ${color.toUpperCase()}`);
+    }
+
+    function publishWinner() {
+      if (confirm('Adakah anda pasti untuk mengumumkan pemenang ke TV?')) {
+        socket.emit('publishWinnerToTV');
+      }
+    }
+
+    function resetAll() {
+      if (confirm('AMARAN: Anda pasti untuk reset keseluruhan skoring dan log?')) {
+        socket.emit('resetScore');
+        document.getElementById('logList').innerHTML = '';
+        currentLogs = [];
+      }
+    }
+
+    // FUNGSI MUAT TURUN FAIL LOG (.TXT)
+    function downloadLog() {
+      if (currentLogs.length === 0) {
+        alert('Tiada rekod log untuk dimuat turun!');
+        return;
+      }
+      
+      const logContent = "=== REKOD LOG PERLAWANAN SILAT ===\n\n" + currentLogs.slice().reverse().join('\n');
+      const blob = new Blob([logContent], { type: 'text/plain;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      
+      const matchNo = document.getElementById('matchNo').value || '1';
+      a.download = `Log_Perlawanan_Match_${matchNo}.txt`;
+      
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
   </script>
 </body>
 </html>
