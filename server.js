@@ -8,6 +8,10 @@ const io = new Server(server);
 
 app.use(express.static(__dirname));
 
+// TAMBAH 2 BARIS INI UNTUK LALUAN BROWSER:
+app.get('/', (req, res) => res.sendFile(__dirname + '/pengadil.html'));
+app.get('/tv', (req, res) => res.sendFile(__dirname + '/tv.html'));
+
 // KEADAAN ASAL SISTEM (STATE)
 let state = {
   timer: {
