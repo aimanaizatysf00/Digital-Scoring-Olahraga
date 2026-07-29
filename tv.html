@@ -207,6 +207,39 @@
 
   <script>
     const socket = io();
+    // Papar Keputusan Pemenang di TV
+socket.on('showWinnerOnTV', (data) => {
+  const overlay = document.getElementById('tvOverlay');
+  const title = document.getElementById('tvVerifyTitle');
+  const detail = document.getElementById('tvVerifyDetail');
+  const result = document.getElementById('tvVerifyResult');
+
+  title.innerText = "🏆 KEPUTUSAN PERLAWANAN 🏆";
+  
+  if (data.winner === 'blue') {
+    detail.innerText = "KEMENANGAN DARI SUDUT BIRU";
+    detail.style.color = "#3498db";
+    result.innerText = `SKOR: ${data.blueScore} - ${data.redScore}`;
+    result.className = "overlay-result result-sah";
+  } else if (data.winner === 'red') {
+    detail.innerText = "KEMENANGAN DARI SUDUT MERAH";
+    detail.style.color = "#e74c3c";
+    result.innerText = `SKOR: ${data.blueScore} - ${data.redScore}`;
+    result.className = "overlay-result result-xsah";
+  } else {
+    detail.innerText = "PERLAWANAN SERI (DRAW)";
+    detail.style.color = "#f1c40f";
+    result.innerText = `SKOR: ${data.blueScore} - ${data.redScore}`;
+    result.className = "overlay-result result-pending";
+  }
+
+  overlay.style.display = 'flex';
+
+  // Pop up kekal di TV selama 10 saat sebelum hilang automatik
+  setTimeout(() => {
+    overlay.style.display = 'none';
+  }, 10000);
+});
 
     function formatTime(seconds) {
       const m = Math.floor(seconds / 60).toString().padStart(2, '0');
