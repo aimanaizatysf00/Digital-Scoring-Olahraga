@@ -1,54 +1,48 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*" } });
+const io = new Server(server);
 
-app.get('/tv', (req, res) => res.sendFile(path.join(__dirname, 'tv.html')));
-app.get('/pengadil', (req, res) => res.sendFile(path.join(__dirname, 'pengadil.html')));
-app.get('/juri', (req, res) => res.sendFile(path.join(__dirname, 'juri.html')));
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'tv.html')));
+app.use(express.static(__dirname));
 
+// KEADAAN ASAL SISTEM (STATE)
 let state = {
-  score: { red: 0, blue: 0 },
+  timer: {
+    currentTime: 90,
+    duration: 90,
+    isRunning: false
+  },
   round: 1,
-  timer: { duration: 90, currentTime: 90, isRunning: false },
-  matchInfo: {
+  matchDetails: {
     className: 'CLASS A',
     matchNo: '1',
     blueName: 'PESILAT BIRU',
-    redName: 'PESILAT MERAH',
     blueTeam: 'KONTINJEN BIRU',
+    redName: 'PESILAT MERAH',
     redTeam: 'KONTINJEN MERAH'
   },
+  score: { blue: 0, red: 0 },
+  penaltyPoints: { blue: 0, red: 0 }, // Menyimpan nilai mutlak mata potong
   penalties: {
     blue: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false },
     red: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false }
   },
-  penaltyPoints: { blue: 0, red: 0 }, // Mengira jumlah mata penolakan hukuman
-  logs: [] // Menyimpan log rekod perlawanan
+  verification: null,
+  winnerData: null
 };
 
 let timerInterval = null;
-let juriVotes = {}; 
-let verificationVotes = [];
-let currentVerifyTarget = { type: '', color: '' };
-const TIME_WINDOW = 1500; 
 
-// FUNGSI UTAMA: TULIS LOG
-function addLog(message) {
-  const m = Math.floor(state.timer.currentTime / 60).toString().padStart(2, '0');
-  const s = (state.timer.currentTime % 60).toString().padStart(2, '0');
-  const timestamp = `[R${state.round} - ${m}:${s}]`;
-  
-  const logEntry = `${timestamp} ${message}`;
-  state.logs.unshift(logEntry); // Tambah log baharu di atas sekali
-  io.emit('newLog', logEntry);
+function addLog(text) {
+  const timestamp = new Date().toLocaleTimeString('ms-MY', { hour12: false });
+  const logMessage = `[${timestamp}] ${text}`;
+  io.emit('newLog', logMessage);
 }
 
+// LOGIK PENGIRAAN PEMENANG
 function calculateWinner() {
   const blueScore = state.score.blue;
   const redScore = state.score.red;
@@ -65,206 +59,139 @@ function calculateWinner() {
     winner = 'red';
     reason = 'Mata Akhir Tertinggi';
   } else {
-    // === APABILA MARKAH AKHIR SERI ===
-    // Penilaian dibuat mengikut Penolakan Hukuman Terkumpul Paling Sedikit
+    // Apabila Markah Akhir Seri -> Semak Penolakan Hukuman Terkumpul
     if (blueDeductions < redDeductions) {
       winner = 'blue';
-      reason = `Markah Seri (${blueScore}-${redScore}), Biru Menang Kerana Hukuman Lebih Sedikit (-${blueDeductions} vs -${redDeductions})`;
+      reason = `Markah Seri (${blueScore}-${redScore}), Biru Menang Hukuman Lebih Sedikit (-${blueDeductions} vs -${redDeductions})`;
     } else if (redDeductions < blueDeductions) {
       winner = 'red';
-      reason = `Markah Seri (${blueScore}-${redScore}), Merah Menang Kerana Hukuman Lebih Sedikit (-${redDeductions} vs -${blueDeductions})`;
+      reason = `Markah Seri (${blueScore}-${redScore}), Merah Menang Hukuman Lebih Sedikit (-${redDeductions} vs -${blueDeductions})`;
     } else {
       winner = 'DRAW';
-      reason = `Markah (${blueScore}-${redScore}) & Jumlah Penolakan Hukuman (-${blueDeductions}) Adalah Sama Seri`;
+      reason = `Markah (${blueScore}-${redScore}) & Hukuman (-${blueDeductions}) Sama Seri`;
     }
   }
 
-  addLog(`🏁 PERLAWANAN TAMAT! Pemenang: ${winner.toUpperCase()} | ${reason}`);
-
-  return {
-    winner: winner,
-    blueScore: blueScore,
-    redScore: redScore,
-    bluePenalties: blueDeductions,
-    redPenalties: redDeductions,
-    reason: reason
-  };
+  return { winner, blueScore, redScore, reason };
 }
 
-  addLog(`🏁 PERLAWANAN TAMAT! Pemenang: ${winner.toUpperCase()} (${reason})`);
-
-  return {
-    winner: winner,
-    blueScore: blueScore,
-    redScore: redScore,
-    bluePenalties: state.penaltyPoints.blue,
-    redPenalties: state.penaltyPoints.red,
-    reason: reason
-  };
-}
-
-// FUNGSI MULA PEMASA
-function startTimer() {
-  if (timerInterval) clearInterval(timerInterval);
-
-  state.timer.isRunning = true;
-  addLog('▶️ Masa Dimulakan');
-  io.emit('updateState', state);
-
-  timerInterval = setInterval(() => {
-    if (state.timer.currentTime > 0) {
-      state.timer.currentTime--;
-      io.emit('updateState', state);
-    } else {
-      // MASA TAMAT
-      clearInterval(timerInterval);
-      timerInterval = null;
-      state.timer.isRunning = false;
-      io.emit('updateState', state);
-
-      const result = calculateWinner();
-      io.emit('matchEndedNotification', result);
-    }
-  }, 1000);
-}
-
-// FUNGSI PAUSE PEMASA
-function pauseTimer() {
-  if (timerInterval) {
-    clearInterval(timerInterval);
-    timerInterval = null;
-  }
-  if(state.timer.isRunning) addLog('⏸️ Masa Dihentikan');
-  state.timer.isRunning = false;
-  io.emit('updateState', state);
-}
-
-// INTERAKSI SOCKET
 io.on('connection', (socket) => {
+  // Hantar state terkini kepada pengguna yang baru buka
   socket.emit('updateState', state);
 
-  // KAWALAN MASA
+  // 1. KAWALAN MASA & ROUND
   socket.on('controlTimer', (action) => {
-    if (action === 'start' && state.timer.currentTime > 0 && !state.timer.isRunning) {
-      startTimer();
+    if (action === 'start' && !state.timer.isRunning) {
+      state.timer.isRunning = true;
+      addLog(`▶️ Pemasa Dimulakan (Round ${state.round})`);
+      
+      timerInterval = setInterval(() => {
+        if (state.timer.currentTime > 0) {
+          state.timer.currentTime--;
+          io.emit('updateState', state);
+        } else {
+          clearInterval(timerInterval);
+          state.timer.isRunning = false;
+          addLog(`⏱️ Masa Tamat untuk Round ${state.round}`);
+          io.emit('updateState', state);
+        }
+      }, 1000);
     } else if (action === 'pause') {
-      pauseTimer();
+      clearInterval(timerInterval);
+      state.timer.isRunning = false;
+      addLog(`⏸️ Pemasa Dihentikan`);
     }
+    io.emit('updateState', state);
   });
 
   socket.on('setTimerDuration', (seconds) => {
-    pauseTimer();
     state.timer.duration = seconds;
     state.timer.currentTime = seconds;
-    addLog(`⏱️ Durasi masa ditetapkan kepada ${seconds} saat`);
+    addLog(`⏱️ Masa Disetkan ke ${seconds} saat`);
     io.emit('updateState', state);
   });
 
   socket.on('setRound', (r) => {
-    pauseTimer();
     state.round = r;
     state.timer.currentTime = state.timer.duration;
-    addLog(`🔔 Pusingan Ke-${r} Dimulakan`);
+    state.timer.isRunning = false;
+    clearInterval(timerInterval);
+    addLog(`🔄 Pusingan Ditukar ke Round ${r}`);
     io.emit('updateState', state);
   });
 
+  // 2. KEMASKINI MAKLUMAT PERLAWANAN
   socket.on('updateMatchDetails', (data) => {
-    state.matchInfo = data;
-    addLog(`📝 Info Perlawanan Dikemaskini: ${data.blueName} vs ${data.redName}`);
+    state.matchDetails = data;
+    addLog(`📝 Maklumat Perlawanan Dikemaskini (Match #${data.matchNo})`);
     io.emit('updateState', state);
   });
 
-  // TEKAN MARKAH JURI
-  socket.on('pressScore', (data) => {
-    const now = Date.now();
-    const juriId = String(data.juriId);
-    const { color, points } = data;
-
-    io.emit('juriPressSignal', { elementId: `${color}_juri_${juriId}`, color, juriId, points });
-
-    const key = `${color}_${points}`;
-    if (!juriVotes[key]) juriVotes[key] = [];
-
-    juriVotes[key] = juriVotes[key].filter(v => (now - v.time) <= TIME_WINDOW);
-
-    const existingVoteIndex = juriVotes[key].findIndex(v => v.juriId === juriId);
-    if (existingVoteIndex !== -1) {
-      juriVotes[key][existingVoteIndex].time = now;
-    } else {
-      juriVotes[key].push({ juriId, time: now });
-    }
-
-    const uniqueJudges = new Set(juriVotes[key].map(v => v.juriId));
-
-    if (uniqueJudges.size >= 2) {
-      state.score[color] += Number(points);
-      const jenisSerangan = Number(points) === 1 ? 'Pukulan (+1)' : 'Tendangan (+2)';
-      addLog(`🎯 SAH! 2/3 Juri menekan ${jenisSerangan} untuk ${color.toUpperCase()}`);
-      
-      juriVotes[key] = [];
-      io.emit('updateState', state);
-    }
-  });
-
-  // MODIFIKASI MARKAH MANUAL (PENGADIL)
-  socket.on('modifyScore', (data) => {
-    state.score[data.color] += data.pts;
-    if (state.score[data.color] < 0) state.score[data.color] = 0;
-    addLog(`✏️ Pelarasan Markah Manual ${data.color.toUpperCase()}: ${data.pts > 0 ? '+' : ''}${data.pts}`);
-    io.emit('updateState', state);
-  });
-
-  // HUKUMAN MANUAL (PENGADIL)
-  socket.on('togglePenalty', (data) => {
-    const { color, code, pts } = data;
+  // 3. KAWALAN HUKUMAN & PENALTI
+  socket.on('togglePenalty', ({ color, code, pts }) => {
     const isActive = state.penalties[color][code];
-    
-    // Tukar status (Toggle)
     state.penalties[color][code] = !isActive;
-    
-    const penaltyValue = Math.abs(pts); // Dapatkan nilai positif penolakan (cth: -1 jadi 1)
+    const penaltyVal = Math.abs(pts);
 
     if (!isActive) {
-      // Jika Hukuman Diberi
-      state.score[color] += pts; // pts adalah negatif, cth: 5 + (-1) = 4
-      state.penaltyPoints[color] += penaltyValue; // Tambah ke dalam rekod penolakan
+      state.score[color] += pts;
+      state.penaltyPoints[color] += penaltyVal;
       addLog(`⚠️ Hukuman Diberi [${color.toUpperCase()}]: ${code} (${pts} mata)`);
     } else {
-      // Jika Hukuman Dibatalkan
-      state.score[color] -= pts; // Cth: 4 - (-1) = 5
-      state.penaltyPoints[color] -= penaltyValue; // Tolak dari rekod penolakan
+      state.score[color] -= pts;
+      state.penaltyPoints[color] -= penaltyVal;
       addLog(`🔄 Hukuman Dibatalkan [${color.toUpperCase()}]: ${code}`);
     }
 
-    // Elak markah paparan jadi negatif bawah 0
     if (state.score[color] < 0) state.score[color] = 0;
     if (state.penaltyPoints[color] < 0) state.penaltyPoints[color] = 0;
 
     io.emit('updateState', state);
   });
 
-  // PUBLISH PEMENANG KE TV
+  // 4. PELARASAN MARKAH MANUAL
+  socket.on('modifyScore', ({ color, pts }) => {
+    state.score[color] += pts;
+    if (state.score[color] < 0) state.score[color] = 0;
+    addLog(`✏️ Markah Manual [${color.toUpperCase()}]: ${pts > 0 ? '+' : ''}${pts}`);
+    io.emit('updateState', state);
+  });
+
+  // 5. SEMAKAN JURI
+  socket.on('requestVerification', (data) => {
+    state.verification = data;
+    addLog(`🔍 Semakan Juri Dibuat: ${data.type} [${data.color.toUpperCase()}]`);
+    io.emit('updateState', state);
+    io.emit('showVerificationOnTV', data);
+  });
+
+  // 8. PENGISYTIHARAN PEMENANG KE TV
   socket.on('publishWinnerToTV', () => {
     const result = calculateWinner();
+    state.winnerData = result;
+    addLog(`🏆 PEMENANG DIISYTIHARKAN: ${result.winner.toUpperCase()} (${result.reason})`);
+    io.emit('updateState', state);
     io.emit('showWinnerOnTV', result);
   });
 
-  // RESET
+  // RESET KESELURUHAN
   socket.on('resetScore', () => {
-    pauseTimer();
-    state.score = { red: 0, blue: 0 };
-    state.round = 1;
+    clearInterval(timerInterval);
     state.timer.currentTime = state.timer.duration;
+    state.timer.isRunning = false;
+    state.round = 1;
+    state.score = { blue: 0, red: 0 };
     state.penaltyPoints = { blue: 0, red: 0 };
     state.penalties = {
       blue: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false },
       red: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false }
     };
-    state.logs = [];
-    addLog('🔄 Sistem Diresetkan Semula');
+    state.winnerData = null;
+    state.verification = null;
+    addLog(`🔄 Sistem Direset Keseluruhan`);
     io.emit('updateState', state);
   });
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log('Server running on port ' + PORT));
+const PORT = 3000;
+server.listen(PORT, () => console.log(`Server Silat Berjalan di http://localhost:${PORT}`));
