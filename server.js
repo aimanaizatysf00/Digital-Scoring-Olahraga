@@ -151,11 +151,53 @@ io.on('connection', (socket) => {
     verificationVotes.push(data);
     if (verificationVotes.length >= 3) {
       const sahCount = verificationVotes.filter(v => v.approved).length;
-      let isApproved = sahCount >= 2; // Majoriti (2 daripada 3 juri)
-      let statusStr = isApproved 
-        ? `${currentVerifyTarget.type} ${currentVerifyTarget.color.toUpperCase()}: SAH ✅ (${sahCount}/3)` 
-        : `${currentVerifyTarget.type} ${currentVerifyTarget.color.toUpperCase()}: TIDAK SAH ❌ (${sahCount}/3)`;
-      
+      let isApproved = sahCount >= 2; // Majoriti 2 daripada 3 juri
+      const { type, color } = currentVerifyTarget;
+
+      let statusStr = "";
+
+      if (isApproved) {
+        statusStr = `${type} ${color.toUpperCase()}: SAH ✅ (${sahCount}/3)`;
+
+        // LOGIK AUTOMATIK PENALTI & POTONGAN MARKAH SELEPAS SAH
+        if (type === 'AMARAN') {
+          if (!state.penalties[color].A1) {
+            state.penalties[color].A1 = true;
+          } else if (!state.penalties[color].A2) {
+            state.penalties[color].A2 = true;
+          }
+        } 
+        else if (type === 'TEGURAN') {
+          if (!state.penalties[color].T1) {
+            state.penalties[color].T1 = true;
+            state.score[color] -= 1; // Auto tolak 1 mata
+          } else if (!state.penalties[color].T2) {
+            state.penalties[color].T2 = true;
+            state.score[color] -= 2; // Auto tolak 2 mata
+          }
+        } 
+        else if (type === 'PERINGATAN') {
+          if (!state.penalties[color].P1) {
+            state.penalties[color].P1 = true;
+            state.score[color] -= 5; // Auto tolak 5 mata
+          } else if (!state.penalties[color].P2) {
+            state.penalties[color].P2 = true;
+            state.score[color] -= 10; // Auto tolak 10 mata
+          }
+        }
+
+        // Semakan jika cukup 6 hukuman (Disqualified / Batal)
+        const p = state.penalties[color];
+        if (p.A1 && p.A2 && p.T1 && p.T2 && p.P1 && p.P2) {
+          io.emit('disqualifiedAlert', color);
+        }
+
+      } else {
+        statusStr = `${type} ${color.toUpperCase()}: TIDAK SAH ❌ (${sahCount}/3)`;
+      }
+
+      // Kemas kini negeri (state) ke semua skrin
+      io.emit('updateState', state);
       io.emit('verificationResult', { text: statusStr, isApproved });
       verificationVotes = [];
     }
