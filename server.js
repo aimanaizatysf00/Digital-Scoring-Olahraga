@@ -6,7 +6,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
-// 1. KOD HTML SKRIN TV
+// 1. KOD HTML SKRIN TV (DENGAN POPUP PENGESAHAN DYNAMIC)
 const tvHTML = `
 <!DOCTYPE html>
 <html lang="ms">
@@ -17,13 +17,23 @@ const tvHTML = `
   <style>
     body { font-family: 'Arial', sans-serif; background: #050505; color: white; margin: 0; padding: 20px; text-align: center; }
     h1 { font-size: 3vw; margin-bottom: 10px; color: #f1c40f; text-transform: uppercase; letter-spacing: 2px; }
-    .board { display: flex; height: 75vh; gap: 20px; }
+    .board { display: flex; height: 70vh; gap: 20px; }
     .team { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
     .blue-bg { background: linear-gradient(145deg, #0f2b92, #1e3799); border: 4px solid #4a69bd; } 
     .red-bg { background: linear-gradient(145deg, #8c0a2b, #b71540); border: 4px solid #e84118; }
     .score { font-size: 22vw; font-weight: 900; line-height: 1; text-shadow: 0 5px 15px rgba(0,0,0,0.5); }
     .label { font-size: 4vw; font-weight: bold; letter-spacing: 4px; margin-bottom: 10px; }
     #status { font-size: 2vw; color: #2ecc71; margin-top: 15px; font-weight: bold; }
+
+    /* OVERLAY POPUP UNTUK SKRIN TV */
+    #tvOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); z-index: 999; flex-direction: column; justify-content: center; align-items: center; border: 10px solid #f1c40f; box-sizing: border-box; }
+    .overlay-title { font-size: 4vw; font-weight: 900; color: #f1c40f; margin-bottom: 20px; text-transform: uppercase; }
+    .overlay-detail { font-size: 6vw; font-weight: bold; margin-bottom: 30px; text-transform: uppercase; }
+    .overlay-result { font-size: 7vw; font-weight: 900; padding: 20px 40px; border-radius: 20px; text-transform: uppercase; }
+    .result-sah { background: #2ecc71; color: white; box-shadow: 0 0 50px #2ecc71; }
+    .result-xsah { background: #e74c3c; color: white; box-shadow: 0 0 50px #e74c3c; }
+    .result-pending { background: #f39c12; color: black; animation: pulse 1s infinite alternate; }
+    @keyframes pulse { 0% { opacity: 0.6; } 100% { opacity: 1; } }
   </style>
 </head>
 <body>
@@ -33,21 +43,50 @@ const tvHTML = `
     <div class="team red-bg"><div class="label">MERAH</div><div class="score" id="redScore">0</div></div>
   </div>
   <div id="status">Status Perlawanan: Berlangsung</div>
+
+  <!-- POPUP TV -->
+  <div id="tvOverlay">
+    <div class="overlay-title">⚠️ SEMAKAN PENGESAHAN JURI ⚠️</div>
+    <div class="overlay-detail" id="tvVerifyDetail">JATUHAN - SUDUT BIRU</div>
+    <div class="overlay-result result-pending" id="tvVerifyResult">MENUNGGU 3 JURI...</div>
+  </div>
+
   <script>
     const socket = io();
     socket.on('updateScore', (score) => {
       document.getElementById('blueScore').innerText = score.blue;
       document.getElementById('redScore').innerText = score.red;
     });
-    socket.on('verificationResult', (msg) => {
-      document.getElementById('status').innerText = msg;
-      setTimeout(() => { document.getElementById('status').innerText = "Status Perlawanan: Berlangsung"; }, 4000);
+
+    // MUNCULKAN POPUP BILA PENGADIL MINTA PENGESAHAN
+    socket.on('promptVerification', (data) => {
+      document.getElementById('tvVerifyDetail').innerText = `${data.type} - SUDUT ${data.color.toUpperCase()}`;
+      document.getElementById('tvVerifyResult').innerText = "MENUNGGU 3 JURI...";
+      document.getElementById('tvVerifyResult').className = "overlay-result result-pending";
+      document.getElementById('tvOverlay').style.display = 'flex';
+    });
+
+    // KEPUTUSAN DIAPARKAN DI POPUP TV
+    socket.on('verificationResult', (data) => {
+      const resElem = document.getElementById('tvVerifyResult');
+      resElem.innerText = data.text;
+      
+      if (data.isApproved) {
+        resElem.className = "overlay-result result-sah";
+      } else {
+        resElem.className = "overlay-result result-xsah";
+      }
+
+      // POPUP TUTUP AUTOMATIK SELEPAS 4 SAAT
+      setTimeout(() => {
+        document.getElementById('tvOverlay').style.display = 'none';
+      }, 4000);
     });
   </script>
 </body>
 </html>`;
 
-// 2. KOD HTML SKRIN KETUA PENGADIL (TAMBAH & TOLAK MARKAH LENGKAP)
+// 2. KOD HTML SKRIN KETUA PENGADIL (PENGESAHAN DENGAN SISI BIRU/MERAH)
 const pengadilHTML = `
 <!DOCTYPE html>
 <html lang="ms">
@@ -63,7 +102,7 @@ const pengadilHTML = `
     button { padding: 10px; font-size: 15px; font-weight: bold; border-radius: 8px; border: none; cursor: pointer; color: white; }
     .blue { background: #2980b9; } .red { background: #c0392b; }
     .blue-add { background: #1f618d; border: 2px solid #3498db; } .red-add { background: #922b21; border: 2px solid #e74c3c; }
-    .yellow { background: #f39c12; color: black; grid-column: span 2; padding: 12px; font-size: 16px; }
+    .yellow { background: #f39c12; color: black; }
     .grey { background: #7f8c8d; grid-column: span 2; padding: 12px; margin-top: 15px; }
     #verifyStatus { font-size: 16px; color: #2ecc71; font-weight: bold; min-height: 24px; margin: 5px 0; }
   </style>
@@ -73,10 +112,16 @@ const pengadilHTML = `
   <div class="score-display">BIRU: <span id="blueScore">0</span> | MERAH: <span id="redScore">0</span></div>
   <div id="verifyStatus"></div>
 
-  <div class="section-title">PENGESAHAN JURI</div>
+  <div class="section-title">PENGESAHAN JATUHAN</div>
   <div class="btn-grid">
-    <button class="yellow" onclick="requestVerification('JATUHAN')">MINTA PENGESAHAN JATUHAN</button>
-    <button class="yellow" style="background:#e67e22; color:white;" onclick="requestVerification('PELANGGARAN')">MINTA PENGESAHAN PELANGGARAN</button>
+    <button class="blue" style="padding:12px;" onclick="requestVerification('JATUHAN', 'blue')">JATUHAN BIRU</button>
+    <button class="red" style="padding:12px;" onclick="requestVerification('JATUHAN', 'red')">JATUHAN MERAH</button>
+  </div>
+
+  <div class="section-title">PENGESAHAN PELANGGARAN</div>
+  <div class="btn-grid">
+    <button class="blue" style="padding:12px;" onclick="requestVerification('PELANGGARAN', 'blue')">PELANGGARAN BIRU</button>
+    <button class="red" style="padding:12px;" onclick="requestVerification('PELANGGARAN', 'red')">PELANGGARAN MERAH</button>
   </div>
 
   <div class="section-title">➕ TAMBAH MARKAH (MANUAL)</div>
@@ -115,13 +160,13 @@ const pengadilHTML = `
       document.getElementById('blueScore').innerText = score.blue;
       document.getElementById('redScore').innerText = score.red;
     });
-    socket.on('verificationResult', (msg) => {
-      document.getElementById('verifyStatus').innerText = msg;
+    socket.on('verificationResult', (data) => {
+      document.getElementById('verifyStatus').innerText = data.text;
     });
     function modifyScore(color, pts) { socket.emit('modifyScore', { color, pts }); }
-    function requestVerification(type) { 
-      document.getElementById('verifyStatus').innerText = "Menunggu jawapan 3 Juri...";
-      socket.emit('requestVerification', type); 
+    function requestVerification(type, color) { 
+      document.getElementById('verifyStatus').innerText = `Menunggu jawapan Juri (${type} ${color.toUpperCase()})...`;
+      socket.emit('requestVerification', { type, color }); 
     }
     function resetScore() { if(confirm('Reset semua skor?')) socket.emit('resetScore'); }
   </script>
@@ -174,8 +219,8 @@ const juriHTML = `
   </div>
 
   <div id="overlay">
-    <h2 id="verifyTitle" style="color:#f1c40f; font-size: 28px;">PENGESAHAN PENGADIL</h2>
-    <p style="font-size:18px;">Sila buat keputusan:</p>
+    <h2 id="verifyTitle" style="color:#f1c40f; font-size: 26px;">PENGESAHAN PENGADIL</h2>
+    <p style="font-size:20px; font-weight:bold; color:#fff;" id="verifySubTitle"></p>
     <button class="pop-btn btn-sah" onclick="submitVerify(true)">SAH ✅</button>
     <button class="pop-btn btn-x-sah" onclick="submitVerify(false)">TIDAK SAH ❌</button>
   </div>
@@ -191,8 +236,9 @@ const juriHTML = `
       socket.emit('pressScore', { juriId: id, color, points });
     }
 
-    socket.on('promptVerification', (type) => {
-      document.getElementById('verifyTitle').innerText = "PENGESAHAN: " + type;
+    socket.on('promptVerification', (data) => {
+      document.getElementById('verifyTitle').innerText = "PENGESAHAN: " + data.type;
+      document.getElementById('verifySubTitle').innerText = "SUDUT " + data.color.toUpperCase();
       document.getElementById('overlay').style.display = 'flex';
     });
 
@@ -215,6 +261,7 @@ app.get('/', (req, res) => res.send(tvHTML));
 let score = { red: 0, blue: 0 };
 let juriVotes = {}; 
 let verificationVotes = [];
+let currentVerifyTarget = { type: '', color: '' };
 const TIME_WINDOW = 1500;
 
 io.on('connection', (socket) => {
@@ -238,7 +285,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // LOGIK TAMBAH / TOLAK MARKAH MANUALLY OLEH PENGADIL
   socket.on('modifyScore', (data) => {
     const { color, pts } = data;
     score[color] = Math.max(0, score[color] + pts);
@@ -248,14 +294,17 @@ io.on('connection', (socket) => {
   socket.on('resetScore', () => {
     score = { red: 0, blue: 0 };
     io.emit('updateScore', score);
-    io.emit('verificationResult', 'MATA DIRESET');
+    io.emit('verificationResult', { text: 'MARKAH DIRESET', isApproved: false });
   });
 
-  socket.on('requestVerification', (type) => {
+  // MINTA PENGESAHAN DENGAN SPESIFIKASI SUDUT
+  socket.on('requestVerification', (data) => {
     verificationVotes = [];
-    io.emit('promptVerification', type);
+    currentVerifyTarget = { type: data.type, color: data.color };
+    io.emit('promptVerification', data);
   });
 
+  // KEPUTUSAN UNDIAN 3 JURI
   socket.on('submitVerification', (data) => {
     verificationVotes.push(data);
     
@@ -263,16 +312,21 @@ io.on('connection', (socket) => {
       const sahCount = verificationVotes.filter(v => v.approved === true).length;
       const xSahCount = verificationVotes.filter(v => v.approved === false).length;
       
-      let resText = "";
+      let isApproved = false;
+      let statusStr = "";
+
       if (sahCount === 3) {
-        resText = "KEPUTUSAN JURI: SAH ✅ (3/3 MUTLAK)";
+        isApproved = true;
+        statusStr = `${currentVerifyTarget.type} ${currentVerifyTarget.color.toUpperCase()}: SAH ✅`;
       } else if (xSahCount === 3) {
-        resText = "KEPUTUSAN JURI: TIDAK SAH ❌ (3/3 MUTLAK)";
+        isApproved = false;
+        statusStr = `${currentVerifyTarget.type} ${currentVerifyTarget.color.toUpperCase()}: TIDAK SAH ❌`;
       } else {
-        resText = `KEPUTUSAN JURI: TIDAK SEBULAT SUARA (Sah: ${sahCount}, Tidak Sah: ${xSahCount})`;
+        isApproved = false;
+        statusStr = `${currentVerifyTarget.type} ${currentVerifyTarget.color.toUpperCase()}: TIDAK SEBULAT SUARA (Sah: ${sahCount}, X-Sah: ${xSahCount})`;
       }
 
-      io.emit('verificationResult', resText);
+      io.emit('verificationResult', { text: statusStr, isApproved: isApproved });
       verificationVotes = [];
     }
   });
