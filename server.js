@@ -134,37 +134,60 @@ io.on('connection', (socket) => {
   });
 
   // --- LOGIK MAJORITI JURI (BERATURAN MASA / TIMED BUFFER) ---
-let pendingScores = []; // Menyimpan rekod tekanan juri sementara
-const VERIFICATION_WINDOW = 1500; // Sela masa kelulusan (1.5 saat)
+let pendingScores = []; 
+const VERIFICATION_WINDOW = 2000; // Dinaikkan ke 2.0 saat supaya juri ada masa mencukupi
 
-socket.on('pressScore', ({ juriId, color, points }) => {
+socket.on('pressScore', (data) => {
+  // 1. KANONIKALKAN DATA (Tukar juriId dan points kepada Nombor secara paksa)
+  const juriId = Number(data.juriId);
+  const color = String(data.color).toLowerCase();
+  const points = Number(data.points);
   const now = Date.now();
 
-  // 1. Hantar signal visual lampu ke TV/Pengadil (supaya tahu Juri mana yang tekan)
+  addLog(`🔘 Juri ${juriId} tekan +${points} (${color.toUpperCase()})`);
+
+  // 2. Hantar signal visual lampu ke TV/Pengadil
   io.emit('juriPressSignal', { juriId, color, points });
-  addLog(`🔘 [JURI ${juriId}] menekan +${points} (${color.toUpperCase()})`);
 
-  // 2. Buang rekod tekanan juri yang sudah melepasi tempoh 1.5 saat
-  pendingScores = pendingScores.filter(item => now - item.timestamp <= VERIFICATION_WINDOW);
+  // 3. Buang rekod tekanan yang melepasi tempoh masa (2 saat)
+  pendingScores = pendingScores.filter(item => (now - item.timestamp) <= VERIFICATION_WINDOW);
 
-  // 3. Semak sama ada juri yang sama sudah menekan jenis markah ini dalam buffer
+  // 4. Semak jika juri yang SAMA tekan butang yang SAMA dalam buffer
   const existingIndex = pendingScores.findIndex(
     item => item.juriId === juriId && item.color === color && item.points === points
   );
 
   if (existingIndex !== -1) {
-    // Kemaskini masa jika juri menekan butang yang sama semula
+    // Kemaskini masa jika juri sama tekan butang sama sekali lagi
     pendingScores[existingIndex].timestamp = now;
   } else {
-    // Masukkan rekod baru ke dalam buffer
+    // Tambah input juri baharu
     pendingScores.push({ juriId, color, points, timestamp: now });
   }
 
-  // 4. Cari padanan (Berapa juri unik menekan color & points yang sama)
+  // 5. Cari juri-juri BERBEZA yang tekan warna & mata yang SAMA
   const matchingPresses = pendingScores.filter(
     item => item.color === color && item.points === points
   );
 
+  // Dapatkan bilangan juri UNIK sahaja yang bersetuju
+  const uniqueJuriCount = new Set(matchingPresses.map(item => item.juriId)).size;
+
+  // 6. Syarat: Sekurang-kurangnya 2 JURI UNIK bersetuju
+  if (uniqueJuriCount >= 2) {
+    state.score[color] += points;
+    addLog(`✅ MATA SAH! +${points} untuk SUDUT ${color.toUpperCase()} (${uniqueJuriCount} Juri bersetuju)`);
+
+    // Bersihkan buffer bagi kategori warna & markah ini supaya mata tak naik double
+    pendingScores = pendingScores.filter(
+      item => !(item.color === color && item.points === points)
+    );
+
+    // Pancarkan markah terbaru ke TV, Pengadil, dan Juri!
+    io.emit('updateState', state);
+  }
+});
+  
   // 5. Syarat: Jika 2 atau lebih juri bersetuju
   if (matchingPresses.length >= 2) {
     // Tambah markah rasmi
