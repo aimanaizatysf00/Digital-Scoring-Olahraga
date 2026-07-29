@@ -64,7 +64,7 @@
     .red-add { background: #8e1519; border-color: #da3633; }
     .red-sub { background: #4e0a0c; border-color: #a8221f; color: #8b949e; }
 
-    /* REKA BENTUK KOTAK HUKUMAN MATCHING SKRIN TV */
+    /* REKA BENTUK KOTAK HUKUMAN */
     .penalty-section {
       display: flex;
       flex-direction: column;
@@ -96,16 +96,20 @@
     .btn-penalty {
       background: #161b22;
       border: 1px solid #30363d;
-      color: #8b949e;
+      color: #c9d1d9;
       padding: 8px 2px;
-      font-size: 10px;
+      font-size: 11px;
       font-weight: 800;
       border-radius: 6px;
       text-align: center;
       transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
     }
 
-    /* TAMPILAN APABILA HUKUMAN AKTIF (MENYALA SAMO KERTAS SKRIN TV) */
+    /* TAMPILAN APABILA HUKUMAN AKTIF */
     .btn-penalty.active-p {
       background: #da3633 !important;
       border-color: #f1c40f !important;
@@ -179,7 +183,7 @@
     </div>
   </div>
 
-  <!-- PENETAP KOTAK HUKUMAN MANUAL (SAMA REKA BENTUK DENGAN SKRIN TV) -->
+  <!-- PENETAP KOTAK HUKUMAN MANUAL -->
   <div class="section-title">🚨 PENETAP KOTAK HUKUMAN (MANUAL TOGGLE)</div>
   <div class="card-panel">
     <div class="two-col-container">
@@ -189,30 +193,30 @@
         <div class="box-title" style="color:#58a6ff;">🔵 HUKUMAN BIRU</div>
         <div class="penalty-section">
           
-          <!-- TEGURAN -->
-          <div class="penalty-group">
-            <div class="penalty-group-title">TEGURAN</div>
-            <div class="penalty-grid">
-              <button class="btn-penalty" id="btn_blue_T1" onclick="togglePenalty('blue', 'T1', -1)">C1 (-1)</button>
-              <button class="btn-penalty" id="btn_blue_T2" onclick="togglePenalty('blue', 'T2', -2)">C2 (-2)</button>
-            </div>
-          </div>
-
-          <!-- AMARAN -->
+          <!-- 1. AMARAN -->
           <div class="penalty-group">
             <div class="penalty-group-title">AMARAN</div>
             <div class="penalty-grid">
-              <button class="btn-penalty" id="btn_blue_A1" onclick="togglePenalty('blue', 'A1', 0)">W1</button>
-              <button class="btn-penalty" id="btn_blue_A2" onclick="togglePenalty('blue', 'A2', 0)">W2</button>
+              <button class="btn-penalty" id="btn_blue_A1" title="Amaran 1" onclick="togglePenalty('blue', 'A1', 0)">👈 A1</button>
+              <button class="btn-penalty" id="btn_blue_A2" title="Amaran 2" onclick="togglePenalty('blue', 'A2', 0)">👈✌️ A2</button>
             </div>
           </div>
 
-          <!-- PERINGATAN -->
+          <!-- 2. TEGURAN -->
+          <div class="penalty-group">
+            <div class="penalty-group-title">TEGURAN</div>
+            <div class="penalty-grid">
+              <button class="btn-penalty" id="btn_blue_T1" title="Teguran 1 (-1)" onclick="togglePenalty('blue', 'T1', -1)">☝️ T1 (-1)</button>
+              <button class="btn-penalty" id="btn_blue_T2" title="Teguran 2 (-2)" onclick="togglePenalty('blue', 'T2', -2)">✌️ T2 (-2)</button>
+            </div>
+          </div>
+
+          <!-- 3. PERINGATAN -->
           <div class="penalty-group">
             <div class="penalty-group-title">PERINGATAN</div>
             <div class="penalty-grid">
-              <button class="btn-penalty" id="btn_blue_P1" onclick="togglePenalty('blue', 'P1', -5)">R1 (-5)</button>
-              <button class="btn-penalty" id="btn_blue_P2" onclick="togglePenalty('blue', 'P2', -10)">R2 (-10)</button>
+              <button class="btn-penalty" id="btn_blue_P1" title="Peringatan 1 (-5)" onclick="togglePenalty('blue', 'P1', -5)">🙅‍♂️ P1 (-5)</button>
+              <button class="btn-penalty" id="btn_blue_P2" title="Peringatan 2 (-10)" onclick="togglePenalty('blue', 'P2', -10)">🙅‍♂️🙅‍♂️ P2 (-10)</button>
             </div>
           </div>
 
@@ -224,30 +228,30 @@
         <div class="box-title" style="color:#f85149;">🔴 HUKUMAN MERAH</div>
         <div class="penalty-section">
           
-          <!-- TEGURAN -->
-          <div class="penalty-group">
-            <div class="penalty-group-title">TEGURAN</div>
-            <div class="penalty-grid">
-              <button class="btn-penalty" id="btn_red_T1" onclick="togglePenalty('red', 'T1', -1)">C1 (-1)</button>
-              <button class="btn-penalty" id="btn_red_T2" onclick="togglePenalty('red', 'T2', -2)">C2 (-2)</button>
-            </div>
-          </div>
-
-          <!-- AMARAN -->
+          <!-- 1. AMARAN -->
           <div class="penalty-group">
             <div class="penalty-group-title">AMARAN</div>
             <div class="penalty-grid">
-              <button class="btn-penalty" id="btn_red_A1" onclick="togglePenalty('red', 'A1', 0)">W1</button>
-              <button class="btn-penalty" id="btn_red_A2" onclick="togglePenalty('red', 'A2', 0)">W2</button>
+              <button class="btn-penalty" id="btn_red_A1" title="Amaran 1" onclick="togglePenalty('red', 'A1', 0)">👈 A1</button>
+              <button class="btn-penalty" id="btn_red_A2" title="Amaran 2" onclick="togglePenalty('red', 'A2', 0)">👈✌️ A2</button>
             </div>
           </div>
 
-          <!-- PERINGATAN -->
+          <!-- 2. TEGURAN -->
+          <div class="penalty-group">
+            <div class="penalty-group-title">TEGURAN</div>
+            <div class="penalty-grid">
+              <button class="btn-penalty" id="btn_red_T1" title="Teguran 1 (-1)" onclick="togglePenalty('red', 'T1', -1)">☝️ T1 (-1)</button>
+              <button class="btn-penalty" id="btn_red_T2" title="Teguran 2 (-2)" onclick="togglePenalty('red', 'T2', -2)">✌️ T2 (-2)</button>
+            </div>
+          </div>
+
+          <!-- 3. PERINGATAN -->
           <div class="penalty-group">
             <div class="penalty-group-title">PERINGATAN</div>
             <div class="penalty-grid">
-              <button class="btn-penalty" id="btn_red_P1" onclick="togglePenalty('red', 'P1', -5)">R1 (-5)</button>
-              <button class="btn-penalty" id="btn_red_P2" onclick="togglePenalty('red', 'P2', -10)">R2 (-10)</button>
+              <button class="btn-penalty" id="btn_red_P1" title="Peringatan 1 (-5)" onclick="togglePenalty('red', 'P1', -5)">🙅‍♂️ P1 (-5)</button>
+              <button class="btn-penalty" id="btn_red_P2" title="Peringatan 2 (-10)" onclick="togglePenalty('red', 'P2', -10)">🙅‍♂️🙅‍♂️ P2 (-10)</button>
             </div>
           </div>
 
