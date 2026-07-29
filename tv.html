@@ -7,7 +7,7 @@
   <script src="/socket.io/socket.io.js"></script>
   <style>
     * { box-sizing: border-box; font-family: 'Arial', sans-serif; }
-    body { background: #000; color: white; margin: 0; padding: 10px; height: 100vh; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
+    body { background: #000; color: white; margin: 0; padding: 10px; height: 10vh; height: 100vh; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
 
     /* HEADER NAMA PESERTA */
     .names-header { display: flex; gap: 10px; height: 10vh; margin-bottom: 5px; }
@@ -171,7 +171,6 @@
     socket.on('updateState', (state) => {
       if(!state) return;
 
-      // Update Nama & Match Info
       if(state.matchInfo) {
         document.getElementById('blueNameDisplay').innerText = state.matchInfo.blueName || 'PESILAT BIRU';
         document.getElementById('blueTeamDisplay').innerText = state.matchInfo.blueTeam || 'KONTINJEN BIRU';
@@ -180,25 +179,22 @@
         document.getElementById('matchClassDisplay').innerText = `${state.matchInfo.className || 'CLASS A'} | MATCH ${state.matchInfo.matchNo || '1'}`;
       }
 
-      // Update Skor & Round
       if(state.score) {
         document.getElementById('blueScore').innerText = state.score.blue ?? 0;
         document.getElementById('redScore').innerText = state.score.red ?? 0;
       }
       document.getElementById('roundDisplay').innerText = "ROUND " + (state.round || 1);
 
-      // Update Masa
       if(state.timer) {
         const timerElem = document.getElementById('timerDisplay');
         timerElem.innerText = formatTime(state.timer.currentTime || 0);
         if (state.timer.isRunning) {
           timerElem.classList.remove('paused');
-          document.getElementById('tvOverlay').style.display = 'none'; // Sembunyi popup jika masa berjalan
+          document.getElementById('tvOverlay').style.display = 'none';
         } else {
           timerElem.classList.add('paused');
         }
 
-        // POPUP MASA TAMAT (HANYA MUNCUL APABILA MASA AKHIR = 0)
         if (state.timer.currentTime === 0 && !state.timer.isRunning) {
           document.getElementById('tvVerifyTitle').innerText = "⏱️ PERHATIAN ⏱️";
           document.getElementById('tvVerifyDetail').innerText = "MASA TAMAT";
@@ -209,7 +205,6 @@
         }
       }
 
-      // Update Lampu Penalti
       const penConfig = [
         { code: 'A1', type: 'active-amaran' },
         { code: 'A2', type: 'active-amaran' },
@@ -233,10 +228,10 @@
     });
 
     // =========================================================
-    // LOGIK MAJORITI JURI (MINIMA 2 JURI TEKAN BARU MATA NAIK)
+    // LOGIK MAJORITI JURI (>= 2 JURI TEKAN BARU MATA NAIK)
     // =========================================================
-    const JURI_WINDOW_MS = 1500; // Selang masa (1.5 saat) untuk juri lain sahkan
-    let activePresses = []; // Menyimpan rekod tekanan juri
+    const JURI_WINDOW_MS = 1500; // Window masa 1.5 saat
+    let activePresses = [];
 
     socket.on('juriPressSignal', (data) => {
       const color = data.color;
@@ -244,7 +239,7 @@
       const points = Number(data.points);
       const now = Date.now();
 
-      // 1. Nyalakan indikator lampu juri di TV
+      // 1. Nyalakan Indikator Lampu Juri
       const targetId = data.elementId || `${color}_juri_${juriId}`;
       const lampElement = document.getElementById(targetId);
 
@@ -261,10 +256,10 @@
         }, 1200);
       }
 
-      // 2. Tapis butang yang dah tamat tempoh (luar window 1.5s)
+      // 2. Tapis rekod lama melebihi 1.5s
       activePresses = activePresses.filter(p => (now - p.timestamp) <= JURI_WINDOW_MS);
 
-      // 3. Rekodkan atau kemaskini input dari Juri ini
+      // 3. Simpan / kemaskini rekod juri ini
       const existingIndex = activePresses.findIndex(p => p.color === color && p.juriId === juriId);
       if (existingIndex !== -1) {
         activePresses[existingIndex] = { color, juriId, points, timestamp: now };
@@ -272,23 +267,21 @@
         activePresses.push({ color, juriId, points, timestamp: now });
       }
 
-      // 4. Kira berapa ramai juri yang tekan MATA SAMA untuk SUDUT SAMA
+      // 4. Kira majoriti bagi butang yang sama
       const matchingPresses = activePresses.filter(p => p.color === color && p.points === points);
 
-      // 5. Sekiranya sekurang-kurangnya 2 JURI menekan butang yang sama:
+      // 5. Jika sekurang-kurangnya 2 juri beri mata yang sama:
       if (matchingPresses.length >= 2) {
-        // Hantar isyarat tambah skor ke Server melalui Socket.IO
         socket.emit('addScoreFromMajority', {
           color: color,
           points: points
         });
 
-        // Kosongkan rekod tekanan sudut ini supaya tidak menambah skor berulang kali
+        // Clear selepas mata disahkan
         activePresses = activePresses.filter(p => !(p.color === color && p.points === points));
       }
     });
 
-    // SHOW WINNER
     socket.on('showWinnerOnTV', (data) => {
       const overlay = document.getElementById('tvOverlay');
       const title = document.getElementById('tvVerifyTitle');
@@ -315,7 +308,6 @@
       setTimeout(() => { overlay.style.display = 'none'; }, 10000);
     });
 
-    // PROMPT VERIFICATION
     socket.on('promptVerification', (data) => {
       document.getElementById('tvVerifyTitle').innerText = "⚠️ SEMAKAN PENGESAHAN JURI ⚠️";
       document.getElementById('tvVerifyDetail').innerText = data.type + ' - SUDUT ' + data.color.toUpperCase();
@@ -325,7 +317,6 @@
       document.getElementById('tvOverlay').style.display = 'flex';
     });
 
-    // VERIFICATION RESULT
     socket.on('verificationResult', (data) => {
       const resElem = document.getElementById('tvVerifyResult');
       resElem.innerText = data.text;
@@ -333,7 +324,6 @@
       setTimeout(() => { document.getElementById('tvOverlay').style.display = 'none'; }, 4000);
     });
 
-    // DISQUALIFIED
     socket.on('disqualifiedAlert', (color) => {
       document.getElementById('tvVerifyTitle').innerText = "❌ DISQUALIFIED / BATAL ❌";
       document.getElementById('tvVerifyDetail').innerText = "SUDUT " + color.toUpperCase() + " DIBATALKAN!";
