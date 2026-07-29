@@ -6,7 +6,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
-// KOD HTML SKRIN TV
+// 1. KOD HTML SKRIN TV
 const tvHTML = `
 <!DOCTYPE html>
 <html lang="ms">
@@ -15,34 +15,39 @@ const tvHTML = `
   <title>Scoreboard TV</title>
   <script src="/socket.io/socket.io.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; background: #000; color: white; margin: 0; padding: 20px; text-align: center; }
-    .board { display: flex; height: 70vh; margin-top: 20px; gap: 15px; }
-    .team { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 20px; }
-    .blue-bg { background: #1e3799; } .red-bg { background: #b71540; }
-    .score { font-size: 18vw; font-weight: bold; }
-    .label { font-size: 4vw; letter-spacing: 2px; }
-    #log { font-size: 2.5vw; color: #f1c40f; margin-top: 25px; font-weight: bold; }
+    body { font-family: 'Arial', sans-serif; background: #050505; color: white; margin: 0; padding: 20px; text-align: center; }
+    h1 { font-size: 3vw; margin-bottom: 10px; color: #f1c40f; text-transform: uppercase; letter-spacing: 2px; }
+    .board { display: flex; height: 75vh; gap: 20px; }
+    .team { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+    .blue-bg { background: linear-gradient(145deg, #0f2b92, #1e3799); border: 4px solid #4a69bd; } 
+    .red-bg { background: linear-gradient(145deg, #8c0a2b, #b71540); border: 4px solid #e84118; }
+    .score { font-size: 22vw; font-weight: 900; line-height: 1; text-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+    .label { font-size: 4vw; font-weight: bold; letter-spacing: 4px; margin-bottom: 10px; }
+    #status { font-size: 2vw; color: #2ecc71; margin-top: 15px; font-weight: bold; }
   </style>
 </head>
 <body>
-  <h2>PAPAN SKOR PERTANDINGAN</h2>
+  <h1>PAPAN SKOR PERTANDINGAN</h1>
   <div class="board">
     <div class="team blue-bg"><div class="label">BIRU</div><div class="score" id="blueScore">0</div></div>
     <div class="team red-bg"><div class="label">MERAH</div><div class="score" id="redScore">0</div></div>
   </div>
-  <div id="log">Menunggu Perlawanan...</div>
+  <div id="status">Status Perlawanan: Berlangsung</div>
   <script>
     const socket = io();
     socket.on('updateScore', (score) => {
       document.getElementById('blueScore').innerText = score.blue;
       document.getElementById('redScore').innerText = score.red;
     });
-    socket.on('logMessage', (msg) => { document.getElementById('log').innerText = msg; });
+    socket.on('verificationResult', (msg) => {
+      document.getElementById('status').innerText = msg;
+      setTimeout(() => { document.getElementById('status').innerText = "Status Perlawanan: Berlangsung"; }, 4000);
+    });
   </script>
 </body>
 </html>`;
 
-// KOD HTML SKRIN KETUA PENGADIL
+// 2. KOD HTML SKRIN KETUA PENGADIL (TAMBAH & TOLAK MARKAH LENGKAP)
 const pengadilHTML = `
 <!DOCTYPE html>
 <html lang="ms">
@@ -51,35 +56,79 @@ const pengadilHTML = `
   <title>Panel Ketua Pengadil</title>
   <script src="/socket.io/socket.io.js"></script>
   <style>
-    body { font-family: sans-serif; background: #222; color: white; padding: 15px; text-align: center; }
-    button { width: 100%; height: 60px; margin: 8px 0; font-size: 18px; font-weight: bold; border-radius: 12px; border: none; cursor: pointer; }
-    .red { background: #e74c3c; color: white; } .blue { background: #3498db; color: white; }
-    .yellow { background: #f1c40f; color: black; } .grey { background: #7f8c8d; color: white; }
+    body { font-family: sans-serif; background: #181818; color: white; padding: 15px; text-align: center; }
+    .score-display { font-size: 32px; color: #f1c40f; font-weight: bold; margin: 10px 0; background: #000; padding: 10px; border-radius: 10px; }
+    .section-title { font-size: 15px; margin-top: 15px; text-align: left; color: #f1c40f; text-transform: uppercase; font-weight: bold; border-bottom: 1px solid #444; padding-bottom: 5px; }
+    .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+    button { padding: 10px; font-size: 15px; font-weight: bold; border-radius: 8px; border: none; cursor: pointer; color: white; }
+    .blue { background: #2980b9; } .red { background: #c0392b; }
+    .blue-add { background: #1f618d; border: 2px solid #3498db; } .red-add { background: #922b21; border: 2px solid #e74c3c; }
+    .yellow { background: #f39c12; color: black; grid-column: span 2; padding: 12px; font-size: 16px; }
+    .grey { background: #7f8c8d; grid-column: span 2; padding: 12px; margin-top: 15px; }
+    #verifyStatus { font-size: 16px; color: #2ecc71; font-weight: bold; min-height: 24px; margin: 5px 0; }
   </style>
 </head>
 <body>
   <h2>PANEL KETUA PENGADIL</h2>
-  <h1 style="color:#f1c40f;"><span id="blueScore">0</span> - <span id="redScore">0</span></h1>
-  <button class="yellow" onclick="requestVerification('JATUHAN')">Minta Pengesahan Jatuhan</button>
-  <button class="yellow" onclick="requestVerification('PELANGGARAN')">Minta Pengesahan Pelanggaran</button>
-  <hr>
-  <button class="blue" onclick="sendPenalty('blue')">Tolak Mata BIRU (-1)</button>
-  <button class="red" onclick="sendPenalty('red')">Tolak Mata MERAH (-1)</button>
-  <button class="grey" style="height:50px; font-size:16px;" onclick="resetScore()">RESET SKOR</button>
+  <div class="score-display">BIRU: <span id="blueScore">0</span> | MERAH: <span id="redScore">0</span></div>
+  <div id="verifyStatus"></div>
+
+  <div class="section-title">PENGESAHAN JURI</div>
+  <div class="btn-grid">
+    <button class="yellow" onclick="requestVerification('JATUHAN')">MINTA PENGESAHAN JATUHAN</button>
+    <button class="yellow" style="background:#e67e22; color:white;" onclick="requestVerification('PELANGGARAN')">MINTA PENGESAHAN PELANGGARAN</button>
+  </div>
+
+  <div class="section-title">➕ TAMBAH MARKAH (MANUAL)</div>
+  <div class="btn-grid">
+    <button class="blue-add" onclick="modifyScore('blue', 1)">Tambah BIRU +1</button>
+    <button class="red-add" onclick="modifyScore('red', 1)">Tambah MERAH +1</button>
+    <button class="blue-add" onclick="modifyScore('blue', 2)">Tambah BIRU +2</button>
+    <button class="red-add" onclick="modifyScore('red', 2)">Tambah MERAH +2</button>
+    <button class="blue-add" onclick="modifyScore('blue', 3)">Tambah BIRU +3</button>
+    <button class="red-add" onclick="modifyScore('red', 3)">Tambah MERAH +3</button>
+    <button class="blue-add" onclick="modifyScore('blue', 5)">Tambah BIRU +5</button>
+    <button class="red-add" onclick="modifyScore('red', 5)">Tambah MERAH +5</button>
+    <button class="blue-add" onclick="modifyScore('blue', 10)">Tambah BIRU +10</button>
+    <button class="red-add" onclick="modifyScore('red', 10)">Tambah MERAH +10</button>
+  </div>
+
+  <div class="section-title">➖ TOLAK MARKAH (PENALTI)</div>
+  <div class="btn-grid">
+    <button class="blue" onclick="modifyScore('blue', -1)">Tolak BIRU -1</button>
+    <button class="red" onclick="modifyScore('red', -1)">Tolak MERAH -1</button>
+    <button class="blue" onclick="modifyScore('blue', -2)">Tolak BIRU -2</button>
+    <button class="red" onclick="modifyScore('red', -2)">Tolak MERAH -2</button>
+    <button class="blue" onclick="modifyScore('blue', -3)">Tolak BIRU -3</button>
+    <button class="red" onclick="modifyScore('red', -3)">Tolak MERAH -3</button>
+    <button class="blue" onclick="modifyScore('blue', -5)">Tolak BIRU -5</button>
+    <button class="red" onclick="modifyScore('red', -5)">Tolak MERAH -5</button>
+    <button class="blue" onclick="modifyScore('blue', -10)">Tolak BIRU -10</button>
+    <button class="red" onclick="modifyScore('red', -10)">Tolak MERAH -10</button>
+  </div>
+
+  <button class="grey" onclick="resetScore()">RESET MARKAH</button>
+
   <script>
     const socket = io();
     socket.on('updateScore', (score) => {
       document.getElementById('blueScore').innerText = score.blue;
       document.getElementById('redScore').innerText = score.red;
     });
-    function sendPenalty(color) { socket.emit('penalty', color); }
-    function requestVerification(type) { socket.emit('requestVerification', type); }
+    socket.on('verificationResult', (msg) => {
+      document.getElementById('verifyStatus').innerText = msg;
+    });
+    function modifyScore(color, pts) { socket.emit('modifyScore', { color, pts }); }
+    function requestVerification(type) { 
+      document.getElementById('verifyStatus').innerText = "Menunggu jawapan 3 Juri...";
+      socket.emit('requestVerification', type); 
+    }
     function resetScore() { if(confirm('Reset semua skor?')) socket.emit('resetScore'); }
   </script>
 </body>
 </html>`;
 
-// KOD HTML SKRIN JURI (DIKEMASKINI DENGAN 3 KATEGORI SERANGAN)
+// 3. KOD HTML SKRIN JURI
 const juriHTML = `
 <!DOCTYPE html>
 <html lang="ms">
@@ -88,17 +137,22 @@ const juriHTML = `
   <title>Panel Juri</title>
   <script src="/socket.io/socket.io.js"></script>
   <style>
-    body { font-family: sans-serif; background: #111; color: white; padding: 10px; text-align: center; margin: 0; }
-    select { font-size: 18px; padding: 8px; margin-bottom: 10px; border-radius: 8px; width: 60%; }
-    .category-title { font-size: 18px; font-weight: bold; margin-top: 15px; text-align: center; color: #f1c40f; }
-    .btn-group { display: flex; gap: 10px; margin-bottom: 10px; }
-    .btn { flex: 1; height: 90px; font-size: 22px; font-weight: bold; border-radius: 15px; border: none; color: white; cursor: pointer; }
-    .blue { background: #3498db; } .red { background: #e74c3c; }
-    .blue:active { background: #1d6fa5; } .red:active { background: #962d22; }
+    body { font-family: sans-serif; background: #111; color: white; padding: 15px; text-align: center; margin: 0; }
+    select { font-size: 18px; padding: 8px; margin-bottom: 15px; border-radius: 8px; width: 80%; }
+    .category-title { font-size: 20px; font-weight: bold; margin: 15px 0 10px 0; color: #f1c40f; }
+    .btn-group { display: flex; gap: 12px; margin-bottom: 15px; }
+    .btn { flex: 1; height: 120px; font-size: 24px; font-weight: bold; border-radius: 18px; border: none; color: white; cursor: pointer; }
+    .blue { background: #2980b9; } .red { background: #c0392b; }
+    .blue:active { background: #1f618d; } .red:active { background: #922b21; }
+    
+    #overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.95); z-index: 100; flex-direction: column; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; }
+    .pop-btn { width: 100%; height: 90px; margin: 10px 0; font-size: 26px; font-weight: bold; border-radius: 15px; border: none; cursor: pointer; }
+    .btn-sah { background: #2ecc71; color: white; }
+    .btn-x-sah { background: #e74c3c; color: white; }
   </style>
 </head>
 <body>
-  <div style="margin-top:10px;">
+  <div>
     <label style="font-size:18px;">ID Juri: </label>
     <select id="juriId">
       <option value="1">Juri 1</option>
@@ -107,25 +161,23 @@ const juriHTML = `
     </select>
   </div>
 
-  <!-- CATEGORY 1: TUMBUK (+1) -->
   <div class="category-title">🥊 TUMBUK (+1 MATA)</div>
   <div class="btn-group">
-    <button class="btn blue" onclick="sendPoint('blue', 1, 'TUMBUK')">BIRU<br>+1</button>
-    <button class="btn red" onclick="sendPoint('red', 1, 'TUMBUK')">MERAH<br>+1</button>
+    <button class="btn blue" onclick="sendPoint('blue', 1)">BIRU<br>+1</button>
+    <button class="btn red" onclick="sendPoint('red', 1)">MERAH<br>+1</button>
   </div>
 
-  <!-- CATEGORY 2: SEPAK (+2) -->
   <div class="category-title">💥 SEPAK (+2 MATA)</div>
   <div class="btn-group">
-    <button class="btn blue" onclick="sendPoint('blue', 2, 'SEPAK')">BIRU<br>+2</button>
-    <button class="btn red" onclick="sendPoint('red', 2, 'SEPAK')">MERAH<br>+2</button>
+    <button class="btn blue" onclick="sendPoint('blue', 2)">BIRU<br>+2</button>
+    <button class="btn red" onclick="sendPoint('red', 2)">MERAH<br>+2</button>
   </div>
 
-  <!-- CATEGORY 3: JATUHAN (+3) -->
-  <div class="category-title">🤼 JATUHAN (+3 MATA)</div>
-  <div class="btn-group">
-    <button class="btn blue" onclick="sendPoint('blue', 3, 'JATUHAN')">BIRU<br>+3</button>
-    <button class="btn red" onclick="sendPoint('red', 3, 'JATUHAN')">MERAH<br>+3</button>
+  <div id="overlay">
+    <h2 id="verifyTitle" style="color:#f1c40f; font-size: 28px;">PENGESAHAN PENGADIL</h2>
+    <p style="font-size:18px;">Sila buat keputusan:</p>
+    <button class="pop-btn btn-sah" onclick="submitVerify(true)">SAH ✅</button>
+    <button class="pop-btn btn-x-sah" onclick="submitVerify(false)">TIDAK SAH ❌</button>
   </div>
 
   <script>
@@ -134,16 +186,21 @@ const juriHTML = `
     const idFromUrl = urlParams.get('id');
     if(idFromUrl) document.getElementById('juriId').value = idFromUrl;
 
-    function sendPoint(color, points, actionType) {
+    function sendPoint(color, points) {
       const id = document.getElementById('juriId').value;
-      socket.emit('pressScore', { juriId: id, color: color, points: points, actionType: actionType });
+      socket.emit('pressScore', { juriId: id, color, points });
     }
 
     socket.on('promptVerification', (type) => {
-      const id = document.getElementById('juriId').value;
-      const isApproved = confirm(\`[PENGADIL MINTA PENGESAHAN]: \${type}\\n\\nAdakah anda setuju?\`);
-      socket.emit('submitVerification', { juriId: id, approved: isApproved });
+      document.getElementById('verifyTitle').innerText = "PENGESAHAN: " + type;
+      document.getElementById('overlay').style.display = 'flex';
     });
+
+    function submitVerify(isApproved) {
+      const id = document.getElementById('juriId').value;
+      socket.emit('submitVerification', { juriId: id, approved: isApproved });
+      document.getElementById('overlay').style.display = 'none';
+    }
   </script>
 </body>
 </html>`;
@@ -157,56 +214,67 @@ app.get('/', (req, res) => res.send(tvHTML));
 // LOGIK SCORING REAL-TIME
 let score = { red: 0, blue: 0 };
 let juriVotes = {}; 
-const TIME_WINDOW = 1500; // 1.5 Saat Window Sync
+let verificationVotes = [];
+const TIME_WINDOW = 1500;
 
 io.on('connection', (socket) => {
   socket.emit('updateScore', score);
 
   socket.on('pressScore', (data) => {
     const now = Date.now();
-    const { juriId, color, points, actionType } = data;
-    
-    // Kunci unik berdasarkan warna + jenis serangan (cth: "blue_2")
+    const { juriId, color, points } = data;
     const key = `${color}_${points}`;
     
     if (!juriVotes[key]) juriVotes[key] = [];
+    juriVotes[key].push({ juriId, time: now });
     
-    // Simpan undian juri
-    juriVotes[key].push({ juriId: juriId, time: now });
-    
-    // Tapis undian yang melepasi tempoh 1.5 saat
     juriVotes[key] = juriVotes[key].filter(v => (now - v.time) <= TIME_WINDOW);
-    
-    // Ambil juri-juri unik yang menekan
     const uniqueJudges = new Set(juriVotes[key].map(v => v.juriId));
 
-    // SYARAT MUTLAK: 3/3 JURI TEKAN BUTANG & WARNA YANG SAMA
     if (uniqueJudges.size >= 3) {
       score[color] += points;
-      juriVotes[key] = []; // Clearkan undian
+      juriVotes[key] = [];
       io.emit('updateScore', score);
-      io.emit('logMessage', `${actionType} (+${points}): 3 JURI SETUJU UNTUK ${color.toUpperCase()}`);
     }
   });
 
-  socket.on('penalty', (color) => {
-    if (score[color] > 0) score[color]--;
+  // LOGIK TAMBAH / TOLAK MARKAH MANUALLY OLEH PENGADIL
+  socket.on('modifyScore', (data) => {
+    const { color, pts } = data;
+    score[color] = Math.max(0, score[color] + pts);
     io.emit('updateScore', score);
-    io.emit('logMessage', `PENALTI: TOLAK MATA ${color.toUpperCase()}`);
   });
 
   socket.on('resetScore', () => {
     score = { red: 0, blue: 0 };
     io.emit('updateScore', score);
-    io.emit('logMessage', 'SKOR DIRESET');
+    io.emit('verificationResult', 'MATA DIRESET');
   });
 
   socket.on('requestVerification', (type) => {
+    verificationVotes = [];
     io.emit('promptVerification', type);
   });
 
   socket.on('submitVerification', (data) => {
-    io.emit('logMessage', `Juri ${data.juriId}: ${data.approved ? 'SETUJU' : 'TIDAK SETUJU'}`);
+    verificationVotes.push(data);
+    
+    if (verificationVotes.length >= 3) {
+      const sahCount = verificationVotes.filter(v => v.approved === true).length;
+      const xSahCount = verificationVotes.filter(v => v.approved === false).length;
+      
+      let resText = "";
+      if (sahCount === 3) {
+        resText = "KEPUTUSAN JURI: SAH ✅ (3/3 MUTLAK)";
+      } else if (xSahCount === 3) {
+        resText = "KEPUTUSAN JURI: TIDAK SAH ❌ (3/3 MUTLAK)";
+      } else {
+        resText = `KEPUTUSAN JURI: TIDAK SEBULAT SUARA (Sah: ${sahCount}, Tidak Sah: ${xSahCount})`;
+      }
+
+      io.emit('verificationResult', resText);
+      verificationVotes = [];
+    }
   });
 });
 
