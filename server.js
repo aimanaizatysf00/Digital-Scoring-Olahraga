@@ -46,6 +46,55 @@ function addLog(text) {
   io.emit('newLog', `[${timestamp}] ${text}`);
 }
 
+// FUNGSI AUTOMATIK HUKUMAN BERPERINGKAT (ESCALATION)
+function applyPenalties(color, penaltyType) {
+  if (!state.penalties[color]) {
+    state.penalties[color] = { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false };
+  }
+
+  const p = state.penalties[color];
+  let appliedCode = '';
+  let pointsDeducted = 0;
+  let isDisqualified = false;
+
+  const type = penaltyType.toUpperCase();
+
+  if (type === 'AMARAN') {
+    if (!p.A1) {
+      p.A1 = true; appliedCode = 'A1'; pointsDeducted = 1;
+    } else if (!p.A2) {
+      p.A2 = true; appliedCode = 'A2'; pointsDeducted = 2;
+    } else {
+      // Amaran 1 & 2 dah ada -> Auto naik ke Teguran
+      return applyPenalties(color, 'TEGURAN');
+    }
+  } else if (type === 'TEGURAN') {
+    if (!p.T1) {
+      p.T1 = true; appliedCode = 'T1'; pointsDeducted = 5;
+    } else if (!p.T2) {
+      p.T2 = true; appliedCode = 'T2'; pointsDeducted = 10;
+    } else {
+      // Teguran 1 & 2 dah ada -> Auto naik ke Peringatan
+      return applyPenalties(color, 'PERINGATAN');
+    }
+  } else if (type === 'PERINGATAN') {
+    if (!p.P1) {
+      p.P1 = true; appliedCode = 'P1'; pointsDeducted = 15;
+    } else if (!p.P2) {
+      p.P2 = true; appliedCode = 'P2'; isDisqualified = true;
+    }
+  }
+
+  // Tolak markah daripada skor sudut
+  if (pointsDeducted > 0) {
+    state.score[color] -= pointsDeducted;
+    if (state.score[color] < 0) state.score[color] = 0; // Elakkan markah negatif
+    state.penaltyPoints[color] += pointsDeducted;
+  }
+
+  return { appliedCode, pointsDeducted, isDisqualified };
+}
+
 function calculateWinner() {
   const blueScore = state.score.blue;
   const redScore = state.score.red;
@@ -157,9 +206,9 @@ io.on('connection', (socket) => {
     );
 
     if (existingIndex !== -1) {
-      pendingScores[existingIndex].timestamp = now; // Kemaskini masa
+      pendingScores[existingIndex].timestamp = now;
     } else {
-      pendingScores.push({ juriId, color, points, timestamp: now }); // Simpan entri baharu
+      pendingScores.push({ juriId, color, points, timestamp: now });
     }
 
     // 4. Cari senarai juri yang menekan warna dan markah yang sama
@@ -175,17 +224,16 @@ io.on('connection', (socket) => {
       state.score[color] += points;
       addLog(`✅ MATA SAH! +${points} untuk SUDUT ${color.toUpperCase()} (${uniqueJuriCount} Juri bersetuju)`);
 
-      // Bersihkan buffer bagi kategori warna & markah ini supaya mata tidak bertambah berulang
+      // Bersihkan buffer bagi kategori warna & markah ini
       pendingScores = pendingScores.filter(
         item => !(item.color === color && item.points === points)
       );
 
-      // Pancarkan markah terbaru ke skrin TV, Pengadil & Juri
       io.emit('updateState', state);
     }
   });
 
-  // --- HUKUMAN & PENALTI ---
+  // --- HUKUMAN & PENALTI MANUAL ---
   socket.on('togglePenalty', ({ color, code, pts }) => {
     const isActive = state.penalties[color][code];
     state.penalties[color][code] = !isActive;
@@ -215,7 +263,7 @@ io.on('connection', (socket) => {
     io.emit('updateState', state);
   });
 
-  // --- SEMAKAN UNDIAN JURI (VERIFICATION) ---
+  // --- SEMAKAN UNDIAN JURI (VERIFICATION) & AUTOMASI MARKAH ---
   socket.on('requestVerification', (data) => {
     currentVerification = {
       type: data.type,
@@ -235,19 +283,59 @@ io.on('connection', (socket) => {
     if (Object.keys(currentVerification.votes).length >= 3) {
       const yesVotes = Object.values(currentVerification.votes).filter(v => v === true).length;
       const isAccepted = yesVotes >= 2;
+      const color = currentVerification.color;
+      const type = currentVerification.type.toUpperCase();
 
-      const resultText = isAccepted ? `SAH (${yesVotes}/3)` : `TAK SAH (${3 - yesVotes}/3)`;
+      if (isAccepted) {
+        if (type === 'JATUHAN') {
+          // AUTOMATIK +3 MATA JIKA JATUHAN SAH
+          state.score[color] += 3;
+          addLog(`✅ Jatuhan SAH (+3 Mata [${color.toUpperCase()}])`);
 
-      addLog(`📢 Keputusan Undian ${currentVerification.type}: ${resultText}`);
-      
-      io.emit('verificationResult', {
-        type: currentVerification.type,
-        color: currentVerification.color,
-        isApproved: isAccepted,
-        text: `${currentVerification.type} - ${resultText}`
-      });
+          io.emit('verificationResult', {
+            type: currentVerification.type,
+            color: color,
+            isApproved: true,
+            text: `JATUHAN SAH (+3 MATA)`
+          });
+
+        } else if (['AMARAN', 'TEGURAN', 'PERINGATAN'].includes(type)) {
+          // AUTOMATIK TUKAR HUKUMAN & POTONG MARKAH
+          const penResult = applyPenalties(color, type);
+
+          if (penResult.isDisqualified) {
+            addLog(`❌ DISQUALIFIED: Sudut ${color.toUpperCase()} Dibatalkan (P2)`);
+            io.emit('disqualifiedAlert', color);
+          } else {
+            addLog(`⚠️ ${type} SAH (${penResult.appliedCode}): -${penResult.pointsDeducted} Mata [${color.toUpperCase()}]`);
+            
+            io.emit('verificationResult', {
+              type: currentVerification.type,
+              color: color,
+              isApproved: true,
+              text: `${type} SAH (${penResult.appliedCode}) -${penResult.pointsDeducted} MATA`
+            });
+          }
+        } else {
+          io.emit('verificationResult', {
+            type: currentVerification.type,
+            color: color,
+            isApproved: true,
+            text: `${currentVerification.type} - SAH (${yesVotes}/3)`
+          });
+        }
+      } else {
+        addLog(`❌ Semakan ${type} TIDAK SAH [${color.toUpperCase()}]`);
+        io.emit('verificationResult', {
+          type: currentVerification.type,
+          color: color,
+          isApproved: false,
+          text: `${currentVerification.type} - TIDAK SAH (${3 - yesVotes}/3)`
+        });
+      }
 
       currentVerification = null;
+      io.emit('updateState', state); // Kemaskini skrin TV, Pengadil, Juri
     }
   });
 
@@ -278,7 +366,7 @@ io.on('connection', (socket) => {
     };
     state.winnerData = null;
     currentVerification = null;
-    pendingScores = []; // Kosongkan rekod tekanan juri apabila reset
+    pendingScores = [];
     addLog(`🔄 Sistem Direset Keseluruhan`);
     io.emit('updateState', state);
   });
