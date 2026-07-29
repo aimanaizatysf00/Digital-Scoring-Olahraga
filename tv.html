@@ -9,15 +9,12 @@
     * { box-sizing: border-box; font-family: 'Arial Black', Impact, sans-serif; }
     body { background: #050505; color: #fff; margin: 0; padding: 20px; overflow: hidden; height: 100vh; display: flex; flex-direction: column; justify-content: space-between; }
 
-    /* HEADER */
     .header { display: flex; justify-content: space-between; align-items: center; background: #111; padding: 15px 30px; border-radius: 12px; border: 2px solid #333; }
     .header-title { font-size: 2rem; color: #f1c40f; letter-spacing: 2px; }
     .header-info { font-size: 1.5rem; color: #fff; }
 
-    /* ARENA UTAMA */
     .arena { display: grid; grid-template-columns: 1fr 280px 1fr; gap: 20px; align-items: center; margin: 20px 0; flex: 1; }
 
-    /* CORNER CARDS */
     .corner { border-radius: 20px; padding: 20px; height: 100%; display: flex; flex-direction: column; justify-content: space-between; position: relative; box-shadow: 0 0 30px rgba(0,0,0,0.8); }
     .blue-corner { background: linear-gradient(135deg, #003366, #0066cc); border: 4px solid #0099ff; }
     .red-corner { background: linear-gradient(135deg, #660000, #cc0000); border: 4px solid #ff3333; }
@@ -27,32 +24,26 @@
 
     .score { font-size: 10rem; text-align: center; font-weight: bold; text-shadow: 4px 4px 10px #000; }
 
-    /* SIMBOL HUKUMAN */
     .penalties-container { display: flex; gap: 10px; justify-content: center; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 10px; }
     .pen-icon { font-size: 1.8rem; opacity: 0.2; transition: 0.3s; }
     .pen-icon.active { opacity: 1; filter: drop-shadow(0 0 8px #fff); }
 
-    /* CENTER CONTROL (TIMER & ROUND) */
     .center-box { text-align: center; background: #111; border: 3px solid #333; border-radius: 20px; padding: 20px; height: 100%; display: flex; flex-direction: column; justify-content: center; }
     .round-title { font-size: 2.2rem; color: #f1c40f; margin-bottom: 10px; }
     .timer { font-size: 5rem; font-family: monospace; color: #2ecc71; background: #000; padding: 10px; border-radius: 10px; border: 2px solid #2ecc71; }
 
-    /* OVERLAY PEMENANG & VERIFICATION */
     .tv-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 9999; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
     .winner-box { border: 6px solid #f1c40f; padding: 40px; border-radius: 25px; background: #111; width: 80%; }
   </style>
 </head>
 <body>
 
-  <!-- HEADER -->
   <div class="header">
     <div class="header-title" id="tvClass">CLASS A</div>
     <div class="header-info">MATCH NO: <span id="tvMatchNo" style="color: #f1c40f;">1</span></div>
   </div>
 
-  <!-- ARENA SKRIN -->
   <div class="arena">
-    
     <!-- BIRU -->
     <div class="corner blue-corner">
       <div>
@@ -70,7 +61,7 @@
       </div>
     </div>
 
-    <!-- MASA & ROUND -->
+    <!-- CENTER -->
     <div class="center-box">
       <div class="round-title" id="tvRound">ROUND 1</div>
       <div class="timer" id="tvTimer">01:30</div>
@@ -92,10 +83,8 @@
         <span class="pen-icon" id="tv_red_P2">🙅‍♂️🙅‍♂️</span>
       </div>
     </div>
-
   </div>
 
-  <!-- OVERLAY PEMENANG -->
   <div class="tv-overlay" id="winnerOverlay">
     <div class="winner-box">
       <h1 style="font-size: 3.5rem; color: #f1c40f; margin: 0;">🏆 PEMENANG RASMI 🏆</h1>
@@ -117,7 +106,6 @@
     socket.on('updateState', (state) => {
       if (!state) return;
 
-      // Update Info Perlawanan
       document.getElementById('tvClass').innerText = state.matchDetails.className;
       document.getElementById('tvMatchNo').innerText = state.matchDetails.matchNo;
       document.getElementById('tvBlueName').innerText = state.matchDetails.blueName;
@@ -125,15 +113,12 @@
       document.getElementById('tvRedName').innerText = state.matchDetails.redName;
       document.getElementById('tvRedTeam').innerText = state.matchDetails.redTeam;
 
-      // Timer & Round
       document.getElementById('tvTimer').innerText = formatTime(state.timer.currentTime);
       document.getElementById('tvRound').innerText = `ROUND ${state.round}`;
 
-      // Score
       document.getElementById('tvBlueScore').innerText = state.score.blue;
       document.getElementById('tvRedScore').innerText = state.score.red;
 
-      // Simbol Hukuman
       ['blue', 'red'].forEach(color => {
         ['A1', 'A2', 'T1', 'T2', 'P1', 'P2'].forEach(code => {
           const elem = document.getElementById(`tv_${color}_${code}`);
@@ -144,7 +129,6 @@
         });
       });
 
-      // Semak Pengisytiharan Pemenang
       if (state.winnerData) {
         showWinnerOverlay(state);
       } else {
