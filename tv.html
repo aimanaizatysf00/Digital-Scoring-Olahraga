@@ -256,19 +256,34 @@
       });
     });
 
-    // MENYALAKAN LAMPU INDIKATOR JURI PADA SKRIN TV
+    // MENYALAKAN LAMPU INDIKATOR JURI & PAPAR SIMBOL SERANGAN
     socket.on('juriPressSignal', (data) => {
-      // Menyokong penghantaran terus ID (data.elementId) atau binaan manual (blue_juri_1)
       const targetId = data.elementId || `${data.color}_juri_${data.juriId}`;
       const lampElement = document.getElementById(targetId);
 
       if (lampElement) {
-        lampElement.classList.add('active'); // Menyala
+        // Tentukan simbol & warna teks mengikut jenis markah (1 = Pukulan, 2 = Tendangan)
+        let symbol = '';
+        if (Number(data.points) === 1) {
+          symbol = '🥊'; // Simbol Pukulan
+        } else if (Number(data.points) === 2) {
+          symbol = '🦶'; // Simbol Tendangan
+        } else {
+          symbol = `+${data.points}`;
+        }
 
-        // Padam semula selepas 1 saat (1000ms)
+        // Simpan nama asal (contoh: "JURI 1")
+        const originalText = `JURI ${data.juriId}`;
+
+        // Tukar teks kotak kepada simbol serangan & nyalakan lampu
+        lampElement.innerText = symbol;
+        lampElement.classList.add('active');
+
+        // Selepas 1.2 saat, kembalikan semula kepada teks "JURI X" & padamkan lampu
         setTimeout(() => {
+          lampElement.innerText = originalText;
           lampElement.classList.remove('active');
-        }, 1000);
+        }, 1200);
       }
     });
 
