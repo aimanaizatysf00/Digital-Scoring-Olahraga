@@ -232,14 +232,25 @@
       });
     });
 
-    // ISYARAT TEKANAN JURI
+    // =========================================================
+    // LOGIK MAJORITI JURI (MINIMA 2 JURI TEKAN BARU MATA NAIK)
+    // =========================================================
+    const JURI_WINDOW_MS = 1500; // Selang masa (1.5 saat) untuk juri lain sahkan
+    let activePresses = []; // Menyimpan rekod tekanan juri
+
     socket.on('juriPressSignal', (data) => {
-      const targetId = data.elementId || `${data.color}_juri_${data.juriId}`;
+      const color = data.color;
+      const juriId = data.juriId;
+      const points = Number(data.points);
+      const now = Date.now();
+
+      // 1. Nyalakan indikator lampu juri di TV
+      const targetId = data.elementId || `${color}_juri_${juriId}`;
       const lampElement = document.getElementById(targetId);
 
       if (lampElement) {
-        let symbol = Number(data.points) === 1 ? '🥊' : (Number(data.points) === 2 ? '🦶' : `+${data.points}`);
-        const originalText = `JURI ${data.juriId}`;
+        let symbol = points === 1 ? '🥊' : (points === 2 ? '🦶' : `+${points}`);
+        const originalText = `JURI ${juriId}`;
 
         lampElement.innerText = symbol;
         lampElement.classList.add('active');
@@ -248,6 +259,32 @@
           lampElement.innerText = originalText;
           lampElement.classList.remove('active');
         }, 1200);
+      }
+
+      // 2. Tapis butang yang dah tamat tempoh (luar window 1.5s)
+      activePresses = activePresses.filter(p => (now - p.timestamp) <= JURI_WINDOW_MS);
+
+      // 3. Rekodkan atau kemaskini input dari Juri ini
+      const existingIndex = activePresses.findIndex(p => p.color === color && p.juriId === juriId);
+      if (existingIndex !== -1) {
+        activePresses[existingIndex] = { color, juriId, points, timestamp: now };
+      } else {
+        activePresses.push({ color, juriId, points, timestamp: now });
+      }
+
+      // 4. Kira berapa ramai juri yang tekan MATA SAMA untuk SUDUT SAMA
+      const matchingPresses = activePresses.filter(p => p.color === color && p.points === points);
+
+      // 5. Sekiranya sekurang-kurangnya 2 JURI menekan butang yang sama:
+      if (matchingPresses.length >= 2) {
+        // Hantar isyarat tambah skor ke Server melalui Socket.IO
+        socket.emit('addScoreFromMajority', {
+          color: color,
+          points: points
+        });
+
+        // Kosongkan rekod tekanan sudut ini supaya tidak menambah skor berulang kali
+        activePresses = activePresses.filter(p => !(p.color === color && p.points === points));
       }
     });
 
