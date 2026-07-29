@@ -1,150 +1,311 @@
-<script>
-  const socket = io();
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scoreboard TV Silat</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    * { box-sizing: border-box; font-family: 'Arial', sans-serif; }
+    body { background: #000; color: white; margin: 0; padding: 10px; height: 100vh; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
 
-  // Papar Keputusan Pemenang di TV
-  socket.on('showWinnerOnTV', (data) => {
-    const overlay = document.getElementById('tvOverlay');
-    const title = document.getElementById('tvVerifyTitle');
-    const detail = document.getElementById('tvVerifyDetail');
-    const result = document.getElementById('tvVerifyResult');
+    /* HEADER NAMA PESERTA */
+    .names-header { display: flex; gap: 10px; height: 10vh; margin-bottom: 5px; }
+    .name-box { flex: 1; padding: 10px 15px; border-radius: 8px; display: flex; flex-direction: column; justify-content: center; font-weight: bold; text-transform: uppercase; }
+    .blue-name { background: #0080ff; color: #fff; }
+    .red-name { background: #d32f2f; color: #fff; text-align: right; }
+    .p-name { font-size: 1.8vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .p-team { font-size: 1.1vw; opacity: 0.9; }
 
-    title.innerText = "🏆 KEPUTUSAN PERLAWANAN 🏆";
+    /* 3 KOTAK HEADER TEMPAT MASA/MATCH/ROUND */
+    .info-bar { display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 10px; height: 10vh; margin-bottom: 10px; }
+    .info-card { background: #1a252f; border: 2px solid #34495e; border-radius: 8px; display: flex; justify-content: center; align-items: center; font-weight: 900; color: #fff; text-transform: uppercase; }
+    .match-info { font-size: 2vw; color: #ffffff; }
+    .timer-info { font-size: 3.5vw; color: #2ecc71; font-family: monospace; background: #000; border-color: #27ae60; }
+    .timer-info.paused { color: #f39c12; border-color: #d35400; animation: blink 1.2s infinite; }
+    @keyframes blink { 50% { opacity: 0.5; } }
+    .round-info { font-size: 2.2vw; color: #ffffff; }
+
+    /* MAIN BOARD AREA */
+    .main-board { display: flex; gap: 10px; height: 75vh; }
+    .corner-side { flex: 1; display: flex; gap: 5px; }
+
+    /* LUKISAN SEKSYEN SKOR & JURI */
+    .score-juri-section { flex: 1.2; display: flex; flex-direction: column; gap: 5px; }
     
-    if (data.winner === 'blue') {
-      detail.innerText = "KEMENANGAN DARI SUDUT BIRU";
-      detail.style.color = "#3498db";
-      result.innerText = `SKOR: ${data.blueScore} - ${data.redScore}`;
-      result.className = "overlay-result result-sah";
-    } else if (data.winner === 'red') {
-      detail.innerText = "KEMENANGAN DARI SUDUT MERAH";
-      detail.style.color = "#e74c3c";
-      result.innerText = `SKOR: ${data.blueScore} - ${data.redScore}`;
-      result.className = "overlay-result result-xsah";
-    } else {
-      detail.innerText = "PERLAWANAN SERI (DRAW)";
-      detail.style.color = "#f1c40f";
-      result.innerText = `SKOR: ${data.blueScore} - ${data.redScore}`;
-      result.className = "overlay-result result-pending";
+    /* SKOR BOX */
+    .score-box { flex: 1; background: #111; border-radius: 10px; display: flex; justify-content: center; align-items: center; font-size: 17vw; font-weight: 900; line-height: 1; border: 4px solid #333; }
+    .blue-score { color: #3498db; background: #001f3f; border-color: #0080ff; }
+    .red-score { color: #e74c3c; background: #3d0000; border-color: #d32f2f; }
+
+    /* GRID SIMBOL HUKUMAN */
+    .penalties-grid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(3, 1fr); gap: 5px; }
+    
+    .p-icon-box { 
+      background: #111; 
+      color: #555; 
+      border-radius: 6px; 
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+      font-size: 2vw; 
+      font-weight: bold; 
+      border: 2px solid #333; 
+      transition: all 0.2s; 
+    }
+    
+    .p-icon-box.active-amaran { background: #f1c40f !important; color: #000 !important; border-color: #fff !important; box-shadow: 0 0 15px rgba(241, 196, 15, 0.9); }
+    .p-icon-box.active-teguran { background: #e67e22 !important; color: #fff !important; border-color: #fff !important; box-shadow: 0 0 15px rgba(230, 126, 34, 0.9); }
+    .p-icon-box.active-peringatan { background: #c0392b !important; color: #fff !important; border-color: #fff !important; box-shadow: 0 0 15px rgba(192, 57, 43, 0.9); }
+
+    /* INDIKATOR JURI */
+    .juri-indicators { display: flex; gap: 5px; height: 6vh; }
+    .juri-box { 
+      flex: 1; background: #222; border: 2px solid #444; border-radius: 6px; 
+      display: flex; justify-content: center; align-items: center; 
+      font-size: 1vw; font-weight: bold; color: #555; transition: all 0.15s ease;
     }
 
-    overlay.style.display = 'flex';
+    .juri-indicators #blue_juri_1.active,
+    .juri-indicators #blue_juri_2.active,
+    .juri-indicators #blue_juri_3.active { background: #0080ff !important; color: #fff !important; border-color: #ffffff !important; box-shadow: 0 0 20px #0080ff; }
 
-    // Pop up kekal di TV selama 10 saat sebelum hilang automatik
-    setTimeout(() => {
-      overlay.style.display = 'none';
-    }, 10000);
-  });
+    .juri-indicators #red_juri_1.active,
+    .juri-indicators #red_juri_2.active,
+    .juri-indicators #red_juri_3.active { background: #d32f2f !important; color: #fff !important; border-color: #ffffff !important; box-shadow: 0 0 20px #d32f2f; }
 
-  function formatTime(seconds) {
-    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
-    const s = (seconds % 60).toString().padStart(2, '0');
-    return `${m}:${s}`;
-  }
+    /* POPUP OVERLAY */
+    #tvOverlay { 
+      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+      background: rgba(0,0,0,0.95); color: white; z-index: 9999; 
+      flex-direction: column; justify-content: center; align-items: center; border: 10px solid #f1c40f; 
+    }
+    .overlay-title { font-size: 3vw; font-weight: 900; color: #f1c40f; }
+    .overlay-detail { font-size: 5vw; font-weight: bold; margin: 20px 0; text-align: center; }
+    .overlay-result { font-size: 4vw; font-weight: 900; padding: 15px 30px; border-radius: 15px; }
+    .result-sah { background: #2ecc71; color: white; }
+    .result-xsah { background: #e74c3c; color: white; }
+    .result-pending { background: #f39c12; color: black; }
+  </style>
+</head>
+<body>
 
-  socket.on('updateState', (state) => {
-    // Update Nama & Match Info
-    if(state.matchInfo) {
-      document.getElementById('blueNameDisplay').innerText = state.matchInfo.blueName || 'PESILAT BIRU';
-      document.getElementById('blueTeamDisplay').innerText = state.matchInfo.blueTeam || 'KONTINJEN BIRU';
-      document.getElementById('redNameDisplay').innerText = state.matchInfo.redName || 'PESILAT MERAH';
-      document.getElementById('redTeamDisplay').innerText = state.matchInfo.redTeam || 'KONTINJEN MERAH';
-      document.getElementById('matchClassDisplay').innerText = `${state.matchInfo.className || 'CLASS A'} | MATCH ${state.matchInfo.matchNo || '1'}`;
+  <!-- HEADER NAMA PESERTA -->
+  <div class="names-header">
+    <div class="name-box blue-name">
+      <div class="p-name" id="blueNameDisplay">PESILAT BIRU</div>
+      <div class="p-team" id="blueTeamDisplay">KONTINJEN BIRU</div>
+    </div>
+    <div class="name-box red-name">
+      <div class="p-name" id="redNameDisplay">PESILAT MERAH</div>
+      <div class="p-team" id="redTeamDisplay">KONTINJEN MERAH</div>
+    </div>
+  </div>
+
+  <!-- 3 KOTAK INFO -->
+  <div class="info-bar">
+    <div class="info-card match-info" id="matchClassDisplay">CLASS A | MATCH 1</div>
+    <div class="info-card timer-info" id="timerDisplay">01:30</div>
+    <div class="info-card round-info" id="roundDisplay">ROUND 1</div>
+  </div>
+
+  <!-- MAIN BOARD -->
+  <div class="main-board">
+    <!-- SUDUT BIRU -->
+    <div class="corner-side">
+      <div class="penalties-grid">
+        <div class="p-icon-box" id="blue_A1">👈</div>
+        <div class="p-icon-box" id="blue_A2">👈✌️</div>
+        <div class="p-icon-box" id="blue_T1">☝️</div>
+        <div class="p-icon-box" id="blue_T2">✌️</div>
+        <div class="p-icon-box" id="blue_P1">🙅‍♂️</div>
+        <div class="p-icon-box" id="blue_P2">🙅‍♂️🙅‍♂️</div>
+      </div>
+      <div class="score-juri-section">
+        <div class="score-box blue-score" id="blueScore">0</div>
+        <div class="juri-indicators">
+          <div class="juri-box" id="blue_juri_1">JURI 1</div>
+          <div class="juri-box" id="blue_juri_2">JURI 2</div>
+          <div class="juri-box" id="blue_juri_3">JURI 3</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUDUT MERAH -->
+    <div class="corner-side">
+      <div class="score-juri-section">
+        <div class="score-box red-score" id="redScore">0</div>
+        <div class="juri-indicators">
+          <div class="juri-box" id="red_juri_1">JURI 1</div>
+          <div class="juri-box" id="red_juri_2">JURI 2</div>
+          <div class="juri-box" id="red_juri_3">JURI 3</div>
+        </div>
+      </div>
+      <div class="penalties-grid">
+        <div class="p-icon-box" id="red_A1">👈</div>
+        <div class="p-icon-box" id="red_A2">👈✌️</div>
+        <div class="p-icon-box" id="red_T1">☝️</div>
+        <div class="p-icon-box" id="red_T2">✌️</div>
+        <div class="p-icon-box" id="red_P1">🙅‍♂️</div>
+        <div class="p-icon-box" id="red_P2">🙅‍♂️🙅‍♂️</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP OVERLAY -->
+  <div id="tvOverlay">
+    <div class="overlay-title" id="tvVerifyTitle">⚠️ PERHATIAN ⚠️</div>
+    <div class="overlay-detail" id="tvVerifyDetail">MASA TAMAT</div>
+    <div class="overlay-result result-pending" id="tvVerifyResult">ROUND 1 TAMAT</div>
+  </div>
+
+  <script>
+    const socket = io();
+
+    function formatTime(seconds) {
+      const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+      const s = (seconds % 60).toString().padStart(2, '0');
+      return `${m}:${s}`;
     }
 
-    // Update Skor & Round
-    document.getElementById('blueScore').innerText = state.score.blue;
-    document.getElementById('redScore').innerText = state.score.red;
-    document.getElementById('roundDisplay').innerText = "ROUND " + state.round;
+    socket.on('updateState', (state) => {
+      if(!state) return;
 
-    // Update Masa
-    const timerElem = document.getElementById('timerDisplay');
-    timerElem.innerText = formatTime(state.timer.currentTime);
-    if (state.timer.isRunning) timerElem.classList.remove('paused');
-    else timerElem.classList.add('paused');
-
-    // === POPUP MASA TAMAT ===
-    if (state.timer.currentTime === 0 && !state.timer.isRunning) {
-      document.getElementById('tvVerifyTitle').innerText = "⏱️ PERHATIAN ⏱️";
-      document.getElementById('tvVerifyDetail').innerText = "MASA TAMAT";
-      document.getElementById('tvVerifyDetail').style.color = "#e74c3c";
-      document.getElementById('tvVerifyResult').innerText = `ROUND ${state.round} TAMAT`;
-      document.getElementById('tvVerifyResult').className = "overlay-result result-xsah";
-      document.getElementById('tvOverlay').style.display = 'flex';
-    }
-
-    // Update Lampu Penalti mengikut warna khusus
-    const penConfig = [
-      { code: 'A1', type: 'active-amaran' },
-      { code: 'A2', type: 'active-amaran' },
-      { code: 'T1', type: 'active-teguran' },
-      { code: 'T2', type: 'active-teguran' },
-      { code: 'P1', type: 'active-peringatan' },
-      { code: 'P2', type: 'active-peringatan' }
-    ];
-
-    ['blue', 'red'].forEach(color => {
-      penConfig.forEach(p => {
-        const elem = document.getElementById(`${color}_${p.code}`);
-        if (elem) {
-          elem.classList.remove('active-amaran', 'active-teguran', 'active-peringatan');
-          if (state.penalties && state.penalties[color] && state.penalties[color][p.code]) {
-            elem.classList.add(p.type);
-          }
-        }
-      });
-    });
-  });
-
-  // MENYALAKAN LAMPU INDIKATOR JURI & PAPAR SIMBOL SERANGAN
-  socket.on('juriPressSignal', (data) => {
-    const targetId = data.elementId || `${data.color}_juri_${data.juriId}`;
-    const lampElement = document.getElementById(targetId);
-
-    if (lampElement) {
-      let symbol = '';
-      if (Number(data.points) === 1) {
-        symbol = '🥊';
-      } else if (Number(data.points) === 2) {
-        symbol = '🦶';
-      } else {
-        symbol = `+${data.points}`;
+      // Update Nama & Match Info
+      if(state.matchInfo) {
+        document.getElementById('blueNameDisplay').innerText = state.matchInfo.blueName || 'PESILAT BIRU';
+        document.getElementById('blueTeamDisplay').innerText = state.matchInfo.blueTeam || 'KONTINJEN BIRU';
+        document.getElementById('redNameDisplay').innerText = state.matchInfo.redName || 'PESILAT MERAH';
+        document.getElementById('redTeamDisplay').innerText = state.matchInfo.redTeam || 'KONTINJEN MERAH';
+        document.getElementById('matchClassDisplay').innerText = `${state.matchInfo.className || 'CLASS A'} | MATCH ${state.matchInfo.matchNo || '1'}`;
       }
 
-      const originalText = `JURI ${data.juriId}`;
+      // Update Skor & Round
+      if(state.score) {
+        document.getElementById('blueScore').innerText = state.score.blue ?? 0;
+        document.getElementById('redScore').innerText = state.score.red ?? 0;
+      }
+      document.getElementById('roundDisplay').innerText = "ROUND " + (state.round || 1);
 
-      lampElement.innerText = symbol;
-      lampElement.classList.add('active');
+      // Update Masa
+      if(state.timer) {
+        const timerElem = document.getElementById('timerDisplay');
+        timerElem.innerText = formatTime(state.timer.currentTime || 0);
+        if (state.timer.isRunning) {
+          timerElem.classList.remove('paused');
+          document.getElementById('tvOverlay').style.display = 'none'; // Sembunyi popup jika masa berjalan
+        } else {
+          timerElem.classList.add('paused');
+        }
 
-      setTimeout(() => {
-        lampElement.innerText = originalText;
-        lampElement.classList.remove('active');
-      }, 1200);
-    }
-  });
+        // POPUP MASA TAMAT (HANYA MUNCUL APABILA MASA AKHIR = 0)
+        if (state.timer.currentTime === 0 && !state.timer.isRunning) {
+          document.getElementById('tvVerifyTitle').innerText = "⏱️ PERHATIAN ⏱️";
+          document.getElementById('tvVerifyDetail').innerText = "MASA TAMAT";
+          document.getElementById('tvVerifyDetail').style.color = "#e74c3c";
+          document.getElementById('tvVerifyResult').innerText = `ROUND ${state.round} TAMAT`;
+          document.getElementById('tvVerifyResult').className = "overlay-result result-xsah";
+          document.getElementById('tvOverlay').style.display = 'flex';
+        }
+      }
 
-  socket.on('promptVerification', (data) => {
-    document.getElementById('tvVerifyTitle').innerText = "⚠️ SEMAKAN PENGESAHAN JURI ⚠️";
-    document.getElementById('tvVerifyDetail').innerText = data.type + ' - SUDUT ' + data.color.toUpperCase();
-    document.getElementById('tvVerifyDetail').style.color = "#ffffff";
-    document.getElementById('tvVerifyResult').innerText = "MENUNGGU 3 JURI...";
-    document.getElementById('tvVerifyResult').className = "overlay-result result-pending";
-    document.getElementById('tvOverlay').style.display = 'flex';
-  });
+      // Update Lampu Penalti
+      const penConfig = [
+        { code: 'A1', type: 'active-amaran' },
+        { code: 'A2', type: 'active-amaran' },
+        { code: 'T1', type: 'active-teguran' },
+        { code: 'T2', type: 'active-teguran' },
+        { code: 'P1', type: 'active-peringatan' },
+        { code: 'P2', type: 'active-peringatan' }
+      ];
 
-  socket.on('verificationResult', (data) => {
-    const resElem = document.getElementById('tvVerifyResult');
-    resElem.innerText = data.text;
-    resElem.className = "overlay-result " + (data.isApproved ? "result-sah" : "result-xsah");
-    setTimeout(() => { document.getElementById('tvOverlay').style.display = 'none'; }, 4000);
-  });
+      ['blue', 'red'].forEach(color => {
+        penConfig.forEach(p => {
+          const elem = document.getElementById(`${color}_${p.code}`);
+          if (elem) {
+            elem.classList.remove('active-amaran', 'active-teguran', 'active-peringatan');
+            if (state.penalties && state.penalties[color] && state.penalties[color][p.code]) {
+              elem.classList.add(p.type);
+            }
+          }
+        });
+      });
+    });
 
-  socket.on('disqualifiedAlert', (color) => {
-    document.getElementById('tvVerifyTitle').innerText = "❌ DISQUALIFIED / BATAL ❌";
-    document.getElementById('tvVerifyDetail').innerText = "SUDUT " + color.toUpperCase() + " DIBATALKAN!";
-    document.getElementById('tvVerifyDetail').style.color = "#e74c3c";
-    document.getElementById('tvVerifyResult').innerText = "PESILAT BATAL (6 AMARAN)";
-    document.getElementById('tvVerifyResult').className = "overlay-result result-xsah";
-    document.getElementById('tvOverlay').style.display = 'flex';
-    setTimeout(() => { document.getElementById('tvOverlay').style.display = 'none'; }, 6000);
-  });
-</script>
+    // ISYARAT TEKANAN JURI
+    socket.on('juriPressSignal', (data) => {
+      const targetId = data.elementId || `${data.color}_juri_${data.juriId}`;
+      const lampElement = document.getElementById(targetId);
+
+      if (lampElement) {
+        let symbol = Number(data.points) === 1 ? '🥊' : (Number(data.points) === 2 ? '🦶' : `+${data.points}`);
+        const originalText = `JURI ${data.juriId}`;
+
+        lampElement.innerText = symbol;
+        lampElement.classList.add('active');
+
+        setTimeout(() => {
+          lampElement.innerText = originalText;
+          lampElement.classList.remove('active');
+        }, 1200);
+      }
+    });
+
+    // SHOW WINNER
+    socket.on('showWinnerOnTV', (data) => {
+      const overlay = document.getElementById('tvOverlay');
+      const title = document.getElementById('tvVerifyTitle');
+      const detail = document.getElementById('tvVerifyDetail');
+      const result = document.getElementById('tvVerifyResult');
+
+      title.innerText = "🏆 KEPUTUSAN PERLAWANAN 🏆";
+      
+      if (data.winner === 'blue') {
+        detail.innerText = "KEMENANGAN DARI SUDUT BIRU";
+        detail.style.color = "#3498db";
+      } else if (data.winner === 'red') {
+        detail.innerText = "KEMENANGAN DARI SUDUT MERAH";
+        detail.style.color = "#e74c3c";
+      } else {
+        detail.innerText = "PERLAWANAN SERI (DRAW)";
+        detail.style.color = "#f1c40f";
+      }
+
+      result.innerText = `SKOR: ${data.blueScore} - ${data.redScore}`;
+      result.className = "overlay-result result-sah";
+      overlay.style.display = 'flex';
+
+      setTimeout(() => { overlay.style.display = 'none'; }, 10000);
+    });
+
+    // PROMPT VERIFICATION
+    socket.on('promptVerification', (data) => {
+      document.getElementById('tvVerifyTitle').innerText = "⚠️ SEMAKAN PENGESAHAN JURI ⚠️";
+      document.getElementById('tvVerifyDetail').innerText = data.type + ' - SUDUT ' + data.color.toUpperCase();
+      document.getElementById('tvVerifyDetail').style.color = "#ffffff";
+      document.getElementById('tvVerifyResult').innerText = "MENUNGGU 3 JURI...";
+      document.getElementById('tvVerifyResult').className = "overlay-result result-pending";
+      document.getElementById('tvOverlay').style.display = 'flex';
+    });
+
+    // VERIFICATION RESULT
+    socket.on('verificationResult', (data) => {
+      const resElem = document.getElementById('tvVerifyResult');
+      resElem.innerText = data.text;
+      resElem.className = "overlay-result " + (data.isApproved ? "result-sah" : "result-xsah");
+      setTimeout(() => { document.getElementById('tvOverlay').style.display = 'none'; }, 4000);
+    });
+
+    // DISQUALIFIED
+    socket.on('disqualifiedAlert', (color) => {
+      document.getElementById('tvVerifyTitle').innerText = "❌ DISQUALIFIED / BATAL ❌";
+      document.getElementById('tvVerifyDetail').innerText = "SUDUT " + color.toUpperCase() + " DIBATALKAN!";
+      document.getElementById('tvVerifyDetail').style.color = "#e74c3c";
+      document.getElementById('tvVerifyResult').innerText = "PESILAT BATAL";
+      document.getElementById('tvVerifyResult').className = "overlay-result result-xsah";
+      document.getElementById('tvOverlay').style.display = 'flex';
+      setTimeout(() => { document.getElementById('tvOverlay').style.display = 'none'; }, 6000);
+    });
+  </script>
+</body>
+</html>
