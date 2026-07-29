@@ -5,20 +5,27 @@
   <title>Scoreboard TV</title>
   <script src="/socket.io/socket.io.js"></script>
   <style>
-    body { font-family: 'Arial', sans-serif; background: #050505; color: white; margin: 0; padding: 20px; text-align: center; }
-    h1 { font-size: 3vw; margin-bottom: 10px; color: #f1c40f; text-transform: uppercase; letter-spacing: 2px; }
-    .board { display: flex; height: 70vh; gap: 20px; }
-    .team { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+    body { font-family: 'Arial', sans-serif; background: #050505; color: white; margin: 0; padding: 15px; text-align: center; }
+    h1 { font-size: 2.5vw; margin: 0 0 10px 0; color: #f1c40f; text-transform: uppercase; letter-spacing: 2px; }
+    .board { display: flex; height: 65vh; gap: 20px; }
+    .team { flex: 1; display: flex; flex-direction: column; justify-content: space-between; align-items: center; border-radius: 25px; padding: 15px; box-sizing: border-box; }
     .blue-bg { background: linear-gradient(145deg, #0f2b92, #1e3799); border: 4px solid #4a69bd; } 
     .red-bg { background: linear-gradient(145deg, #8c0a2b, #b71540); border: 4px solid #e84118; }
-    .score { font-size: 22vw; font-weight: 900; line-height: 1; text-shadow: 0 5px 15px rgba(0,0,0,0.5); }
-    .label { font-size: 4vw; font-weight: bold; letter-spacing: 4px; margin-bottom: 10px; }
-    #status { font-size: 2vw; color: #2ecc71; margin-top: 15px; font-weight: bold; }
+    .score { font-size: 16vw; font-weight: 900; line-height: 1; text-shadow: 0 5px 15px rgba(0,0,0,0.5); margin: auto 0; }
+    .label { font-size: 3vw; font-weight: bold; letter-spacing: 4px; }
+    
+    /* KOTAK INDIKATOR PENALTI */
+    .penalty-container { display: flex; gap: 6px; width: 100%; justify-content: center; }
+    .p-box { flex: 1; background: rgba(0,0,0,0.6); border: 2px solid #555; border-radius: 8px; padding: 6px 2px; font-size: 0.8vw; font-weight: bold; color: #777; text-align: center; }
+    .p-box.active { background: #e74c3c; color: white; border-color: #fff; box-shadow: 0 0 12px #e74c3c; }
 
+    #roundDisplay { font-size: 2vw; color: #f1c40f; margin-top: 10px; font-weight: bold; }
+
+    /* OVERLAY POPUP UNTUK SKRIN TV */
     #tvOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); z-index: 999; flex-direction: column; justify-content: center; align-items: center; border: 10px solid #f1c40f; box-sizing: border-box; }
     .overlay-title { font-size: 4vw; font-weight: 900; color: #f1c40f; margin-bottom: 20px; text-transform: uppercase; }
     .overlay-detail { font-size: 6vw; font-weight: bold; margin-bottom: 30px; text-transform: uppercase; }
-    .overlay-result { font-size: 7vw; font-weight: 900; padding: 20px 40px; border-radius: 20px; text-transform: uppercase; }
+    .overlay-result { font-size: 6vw; font-weight: 900; padding: 20px 40px; border-radius: 20px; text-transform: uppercase; }
     .result-sah { background: #2ecc71; color: white; box-shadow: 0 0 50px #2ecc71; }
     .result-xsah { background: #e74c3c; color: white; box-shadow: 0 0 50px #e74c3c; }
     .result-pending { background: #f39c12; color: black; animation: pulse 1s infinite alternate; }
@@ -27,26 +34,71 @@
 </head>
 <body>
   <h1>PAPAN SKOR PERTANDINGAN</h1>
+  
   <div class="board">
-    <div class="team blue-bg"><div class="label">BIRU</div><div class="score" id="blueScore">0</div></div>
-    <div class="team red-bg"><div class="label">MERAH</div><div class="score" id="redScore">0</div></div>
+    <!-- SUDUT BIRU -->
+    <div class="team blue-bg">
+      <div class="label">BIRU</div>
+      <div class="score" id="blueScore">0</div>
+      
+      <div class="penalty-container">
+        <div class="p-box" id="blue_A1">A1</div>
+        <div class="p-box" id="blue_A2">A2</div>
+        <div class="p-box" id="blue_T1">T1 (-1)</div>
+        <div class="p-box" id="blue_T2">T2 (-2)</div>
+        <div class="p-box" id="blue_P1">P1 (-5)</div>
+        <div class="p-box" id="blue_P2">P2 (-10)</div>
+      </div>
+    </div>
+
+    <!-- SUDUT MERAH -->
+    <div class="team red-bg">
+      <div class="label">MERAH</div>
+      <div class="score" id="redScore">0</div>
+
+      <div class="penalty-container">
+        <div class="p-box" id="red_A1">A1</div>
+        <div class="p-box" id="red_A2">A2</div>
+        <div class="p-box" id="red_T1">T1 (-1)</div>
+        <div class="p-box" id="red_T2">T2 (-2)</div>
+        <div class="p-box" id="red_P1">P1 (-5)</div>
+        <div class="p-box" id="red_P2">P2 (-10)</div>
+      </div>
+    </div>
   </div>
-  <div id="status">Status Perlawanan: Berlangsung</div>
+
+  <div id="roundDisplay">PUSINGAN 1</div>
 
   <div id="tvOverlay">
-    <div class="overlay-title">⚠️ SEMAKAN PENGESAHAN JURI ⚠️</div>
+    <div class="overlay-title" id="tvVerifyTitle">⚠️ SEMAKAN PENGESAHAN JURI ⚠️</div>
     <div class="overlay-detail" id="tvVerifyDetail">JATUHAN - SUDUT BIRU</div>
     <div class="overlay-result result-pending" id="tvVerifyResult">MENUNGGU 3 JURI...</div>
   </div>
 
   <script>
     const socket = io();
-    socket.on('updateScore', (score) => {
-      document.getElementById('blueScore').innerText = score.blue;
-      document.getElementById('redScore').innerText = score.red;
+    
+    socket.on('updateState', (state) => {
+      document.getElementById('blueScore').innerText = state.score.blue;
+      document.getElementById('redScore').innerText = state.score.red;
+      document.getElementById('roundDisplay').innerText = "PUSINGAN " + state.round;
+
+      // Update Lampu Penalti
+      const penalties = ['A1', 'A2', 'T1', 'T2', 'P1', 'P2'];
+      ['blue', 'red'].forEach(color => {
+        penalties.forEach(p => {
+          const elem = document.getElementById(`${color}_${p}`);
+          if (state.penalties[color][p]) {
+            elem.classList.add('active');
+          } else {
+            elem.classList.remove('active');
+          }
+        });
+      });
     });
 
     socket.on('promptVerification', (data) => {
+      document.getElementById('tvVerifyTitle').innerText = "⚠️ SEMAKAN PENGESAHAN JURI ⚠️";
       document.getElementById('tvVerifyDetail').innerText = data.type + ' - SUDUT ' + data.color.toUpperCase();
       document.getElementById('tvVerifyResult').innerText = "MENUNGGU 3 JURI...";
       document.getElementById('tvVerifyResult').className = "overlay-result result-pending";
@@ -66,6 +118,19 @@
       setTimeout(() => {
         document.getElementById('tvOverlay').style.display = 'none';
       }, 4000);
+    });
+
+    // POPUP BILA DISQUALIFIED
+    socket.on('disqualifiedAlert', (color) => {
+      document.getElementById('tvVerifyTitle').innerText = "❌ DISQUALIFIED / BATAL ❌";
+      document.getElementById('tvVerifyDetail').innerText = "SUDUT " + color.toUpperCase() + " DIBATALKAN!";
+      document.getElementById('tvVerifyResult').innerText = "PESILAT BATAL (6 AMARAN)";
+      document.getElementById('tvVerifyResult').className = "overlay-result result-xsah";
+      document.getElementById('tvOverlay').style.display = 'flex';
+      
+      setTimeout(() => {
+        document.getElementById('tvOverlay').style.display = 'none';
+      }, 6000);
     });
   </script>
 </body>
