@@ -3,352 +3,329 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>PANEL JURI - SILAT OLAHRAGA</title>
-  
+  <title>Panel Juri - Silat Olahraga</title>
   <script src="/socket.io/socket.io.js"></script>
-
   <style>
-    :root {
-      --bg-dark: #121212;
-      --red-corner: #dc3545;
-      --red-active: #a71d2a;
-      --blue-corner: #0d6efd;
-      --blue-active: #0b5ed7;
-      --yellow-drop: #ffc107;
-      --text-light: #ffffff;
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
+    * { 
+      box-sizing: border-box; 
+      margin: 0; 
+      padding: 0; 
+      font-family: 'Segoe UI', Roboto, sans-serif; 
       user-select: none;
       -webkit-user-select: none;
-      touch-action: manipulation;
     }
 
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: var(--bg-dark);
-      color: var(--text-light);
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
+    body { 
+      background: #0a0c10; 
+      color: #fff; 
+      height: 100vh; 
+      display: flex; 
+      flex-direction: column; 
+      padding: 10px;
       overflow: hidden;
     }
 
-    /* BAR ATAS / HEADER */
-    .header-bar {
-      background: #000;
-      padding: 10px 15px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 2px solid #333;
+    /* HEADER PILIHAN ID JURI & STATUS MASA */
+    .header-bar { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      background: #161b22; 
+      padding: 8px 12px; 
+      border-radius: 8px; 
+      border: 1px solid #30363d;
+      margin-bottom: 10px;
+      height: 50px;
     }
 
-    .juri-select-container {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .juri-select-container label {
-      font-weight: bold;
-      color: #ffc107;
-      font-size: 1.1rem;
-    }
-
-    select {
-      background: #222;
-      color: #fff;
-      border: 1px solid #555;
-      padding: 8px 12px;
-      font-size: 1rem;
-      border-radius: 6px;
-      font-weight: bold;
+    .juri-selector select { 
+      background: #0d1117; 
+      color: #f1c40f; 
+      border: 1px solid #f1c40f; 
+      padding: 6px 10px; 
+      font-size: 14px; 
+      font-weight: bold; 
+      border-radius: 6px; 
       outline: none;
     }
 
-    .match-info {
-      font-size: 1.1rem;
-      font-weight: bold;
-      background: #222;
-      padding: 6px 12px;
-      border-radius: 6px;
-      border: 1px solid #444;
+    .status-info { 
+      font-size: 14px; 
+      font-weight: bold; 
+      color: #8b949e; 
     }
 
-    /* KAWASAN UTAMA PEMARKAHAN (Dua Terbahag) */
-    .scoring-container {
-      display: flex;
-      flex: 1;
-      height: calc(100vh - 60px);
+    /* LAYOUT UTAMA BUTANG MARKAH */
+    .main-container { 
+      flex: 1; 
+      display: flex; 
+      gap: 10px; 
     }
 
-    .corner-side {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      padding: 10px;
-      gap: 10px;
+    @media (orientation: portrait) {
+      .main-container { flex-direction: column; }
     }
 
-    .red-side {
-      background-color: rgba(220, 53, 69, 0.05);
-      border-right: 2px solid #333;
+    @media (orientation: landscape) {
+      .main-container { flex-direction: row; }
     }
 
-    .blue-side {
-      background-color: rgba(13, 110, 253, 0.05);
-    }
-
-    /* REKABENTUK BUTANG MARKAH */
-    .btn-score {
-      flex: 1;
-      border: none;
-      border-radius: 12px;
-      color: white;
-      font-weight: bold;
-      display: flex;
-      flex-direction: column;
+    /* KOTAK SUDUT BIRU & MERAH */
+    .corner-panel { 
+      flex: 1; 
+      display: flex; 
+      flex-direction: column; 
+      gap: 8px; 
+      padding: 10px; 
+      border-radius: 12px; 
       justify-content: center;
-      align-items: center;
-      cursor: pointer;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-      transition: transform 0.05s, filter 0.1s;
     }
 
-    .btn-score:active {
-      transform: scale(0.97);
-      filter: brightness(1.2);
+    .blue-corner { 
+      background: rgba(0, 128, 255, 0.08); 
+      border: 2px solid #0080ff; 
     }
 
-    /* SKIM WARNA BUTANG MERAH */
-    .btn-red-1 { background: linear-gradient(135deg, #e63946, #b71c1c); }
-    .btn-red-2 { background: linear-gradient(135deg, #d32f2f, #8e0000); }
-    .btn-red-3 { background: linear-gradient(135deg, #ff5252, #c62828); border: 2px solid #ff8080; }
-
-    /* SKIM WARNA BUTANG BIRU */
-    .btn-blue-1 { background: linear-gradient(135deg, #1e88e5, #0d47a1); }
-    .btn-blue-2 { background: linear-gradient(135deg, #1565c0, #0a2472); }
-    .btn-blue-3 { background: linear-gradient(135deg, #42a5f5, #1565c0); border: 2px solid #90caf9; }
-
-    .btn-score span.pts {
-      font-size: 3.5rem;
-      line-height: 1;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.6);
+    .red-corner { 
+      background: rgba(211, 47, 47, 0.08); 
+      border: 2px solid #d32f2f; 
     }
 
-    .btn-score span.lbl {
-      font-size: 1.2rem;
-      margin-top: 5px;
-      letter-spacing: 1px;
-      text-transform: uppercase;
-      opacity: 0.9;
+    .corner-title { 
+      text-align: center; 
+      font-size: 16px; 
+      font-weight: 900; 
+      text-transform: uppercase; 
+      letter-spacing: 1px; 
+    }
+    .blue-corner .corner-title { color: #3498db; }
+    .red-corner .corner-title { color: #e74c3c; }
+
+    /* BUTTON ACTION MARKAH */
+    .btn-score-group {
+      display: flex;
+      gap: 8px;
+      flex: 1;
     }
 
-    /* BUTANG KHAS JATUHAN (+3) */
+    .btn-score { 
+      flex: 1; 
+      border: none; 
+      border-radius: 10px; 
+      font-size: 22px; 
+      font-weight: 900; 
+      color: #fff; 
+      cursor: pointer; 
+      display: flex; 
+      flex-direction: column; 
+      justify-content: center; 
+      align-items: center; 
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      transition: transform 0.08s ease, filter 0.08s ease;
+    }
+
+    .btn-score:active { 
+      transform: scale(0.95); 
+      filter: brightness(1.3);
+    }
+
+    .btn-score span { 
+      font-size: 11px; 
+      font-weight: normal; 
+      opacity: 0.9; 
+      margin-top: 2px;
+    }
+
+    .btn-blue-1 { background: #0056b3; }
+    .btn-blue-2 { background: #0080ff; }
+    .btn-blue-3 { background: #003380; } /* Warna Biru untuk Jatuhan */
+
+    .btn-red-1 { background: #9a0000; }
+    .btn-red-2 { background: #d32f2f; }
+    .btn-red-3 { background: #660000; } /* Warna Merah untuk Jatuhan */
+
+    /* BUTANG JATUHAN (KHAS) */
     .btn-jatuhan {
-      flex: 0.8;
-      background: linear-gradient(135deg, #ffb300, #ff6f00);
-      color: #000;
-      border-radius: 12px;
       border: none;
+      border-radius: 10px;
+      font-size: 20px;
       font-weight: 900;
-      font-size: 1.4rem;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 10px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-      cursor: pointer;
-    }
-    .btn-jatuhan:active {
-      transform: scale(0.97);
-      background: #ffc107;
-    }
-
-    /* POPUP/INDIKATOR APABILA DITEKAN */
-    .feedback-indicator {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      font-size: 5rem;
-      font-weight: bold;
       color: #fff;
-      text-shadow: 0 0 20px rgba(0,0,0,0.8);
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.2s, transform 0.2s;
-      z-index: 100;
-    }
-    .feedback-indicator.show {
-      opacity: 1;
-      transform: translate(-50%, -60%) scale(1.2);
-    }
-
-    /* SKRIN DISEKAT/LOCKED JIKA PEMASA BERHENTI */
-    .disabled-overlay {
-      position: absolute;
-      top: 60px; left: 0; width: 100%; height: calc(100vh - 60px);
-      background: rgba(0,0,0,0.8);
+      cursor: pointer;
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
-      z-index: 99;
-      color: #ff3333;
-      font-size: 2rem;
-      font-weight: bold;
-      letter-spacing: 2px;
+      padding: 12px 0;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      transition: transform 0.08s ease, filter 0.08s ease;
     }
 
-    @media (max-height: 500px) {
-      .btn-score span.pts { font-size: 2.2rem; }
-      .btn-score span.lbl { font-size: 0.9rem; }
-      .btn-jatuhan { font-size: 1.1rem; }
+    .btn-jatuhan:active {
+      transform: scale(0.95);
+      filter: brightness(1.3);
     }
+
+    .btn-jatuhan span {
+      font-size: 11px;
+      font-weight: bold;
+      margin-top: 2px;
+    }
+
+    /* POPUP OVERLAY VERIFICATION */
+    #verifyOverlay { 
+      display: none; 
+      position: fixed; 
+      top: 0; 
+      left: 0; 
+      width: 100%; 
+      height: 100%; 
+      background: rgba(0,0,0,0.92); 
+      z-index: 999; 
+      flex-direction: column; 
+      justify-content: center; 
+      align-items: center; 
+      padding: 15px; 
+    }
+
+    .overlay-card {
+      background: #161b22;
+      border: 3px solid #f1c40f;
+      border-radius: 12px;
+      padding: 15px;
+      width: 100%;
+      max-width: 450px;
+      text-align: center;
+    }
+
+    .overlay-title { font-size: 16px; font-weight: 800; color: #f1c40f; margin-bottom: 5px; }
+    .overlay-detail { font-size: 20px; font-weight: 900; color: #fff; margin-bottom: 15px; }
+
+    .vote-btn-group { display: flex; gap: 10px; }
+    .btn-vote { 
+      flex: 1; 
+      padding: 15px 5px; 
+      font-size: 18px; 
+      font-weight: 900; 
+      border-radius: 8px; 
+      border: none; 
+      color: white; 
+      cursor: pointer; 
+    }
+    .btn-sah { background: #2ecc71; }
+    .btn-xsah { background: #e74c3c; }
   </style>
 </head>
 <body>
 
-  <!-- BAR ATAS -->
+  <!-- HEADER SELECTOR JURI -->
   <div class="header-bar">
-    <div class="juri-select-container">
-      <label for="juriIdSelect">IDENTITI:</label>
-      <select id="juriIdSelect" onchange="changeJuriId()">
+    <div class="juri-selector">
+      <label for="juriIdSelect" style="font-size: 12px; color: #8b949e;">PERANAN:</label>
+      <select id="juriIdSelect">
         <option value="1">JURI 1</option>
         <option value="2">JURI 2</option>
         <option value="3">JURI 3</option>
       </select>
     </div>
-
-    <div class="match-info" id="roundDisplay">
-      PUSINGAN: -
-    </div>
+    <div class="status-info" id="matchStatus">R1 | 01:30</div>
   </div>
 
-  <!-- KAWASAN TUKAR MARKAH -->
-  <div class="scoring-container">
+  <!-- MAIN CONTAINER -->
+  <div class="main-container">
     
-    <!-- BAHAGIAN SUDUT MERAH -->
-    <div class="corner-side red-side">
-      
-      <!-- PUKULAN (+1) -->
-      <button class="btn-score btn-red-1" onclick="sendScore('red', 1)">
-        <span class="pts">+1</span>
-        <span class="lbl">PUKULAN</span>
+    <!-- SUDUT BIRU -->
+    <div class="corner-panel blue-corner">
+      <div class="corner-title">🔵 SUDUT BIRU</div>
+      <div class="btn-score-group">
+        <button class="btn-score btn-blue-1" onclick="sendScore('blue', 1)">
+          👊🏻
+          <span>PUKULAN (+1)</span>
+        </button>
+        <button class="btn-score btn-blue-2" onclick="sendScore('blue', 2)">
+          🦶🏻
+          <span>TENDANGAN (+2)</span>
+        </button>
+      </div>
+      <!-- BUTANG JATUHAN SUDUT BIRU -->
+      <button class="btn-jatuhan btn-blue-3" onclick="sendScore('blue', 3)">
+        🧎🏻 
+        <span>JATUHAN (+3)</span>
       </button>
-
-      <!-- TENDANGAN (+2) -->
-      <button class="btn-score btn-red-2" onclick="sendScore('red', 2)">
-        <span class="pts">+2</span>
-        <span class="lbl">TENDANGAN</span>
-      </button>
-
-      <!-- BUTANG JATUHAN SUDUT MERAH -->
-      <button class="btn-score btn-red-3" onclick="sendScore('red', 3)">
-        <span class="pts">+3</span>
-        <span class="lbl">JATUHAN</span>
-      </button>
-
     </div>
 
-    <!-- BAHAGIAN SUDUT BIRU -->
-    <div class="corner-side blue-side">
-      
-      <!-- PUKULAN (+1) -->
-      <button class="btn-score btn-blue-1" onclick="sendScore('blue', 1)">
-        <span class="pts">+1</span>
-        <span class="lbl">PUKULAN</span>
+    <!-- SUDUT MERAH -->
+    <div class="corner-panel red-corner">
+      <div class="corner-title">🔴 SUDUT MERAH</div>
+      <div class="btn-score-group">
+        <button class="btn-score btn-red-1" onclick="sendScore('red', 1)">
+          👊🏻
+          <span>PUKULAN (+1)</span>
+        </button>
+        <button class="btn-score btn-red-2" onclick="sendScore('red', 2)">
+          🦶🏻
+          <span>TENDANGAN (+2)</span>
+        </button>
+      </div>
+      <!-- BUTANG JATUHAN SUDUT MERAH -->
+      <button class="btn-jatuhan btn-red-3" onclick="sendScore('red', 3)">
+        🧎🏻 
+        <span>JATUHAN (+3)</span>
       </button>
-
-      <!-- TENDANGAN (+2) -->
-      <button class="btn-score btn-blue-2" onclick="sendScore('blue', 2)">
-        <span class="pts">+2</span>
-        <span class="lbl">TENDANGAN</span>
-      </button>
-
-      <!-- BUTANG JATUHAN SUDUT BIRU -->
-      <button class="btn-score btn-blue-3" onclick="sendScore('blue', 3)">
-        <span class="pts">+3</span>
-        <span class="lbl">JATUHAN</span>
-      </button>
-
     </div>
 
   </div>
 
-  <!-- INDIKATOR MAKLUM BALAS KETIKAN -->
-  <div id="feedback" class="feedback-indicator">+1</div>
-
-  <!-- OVERLAY SKRIN DIKUNCI -->
-  <div id="lockOverlay" class="disabled-overlay" style="display: none;">
-    MASA DIJEDA / PERLAWANAN TAMAT
+  <!-- POPUP SEMAKAN VERIFICATION -->
+  <div id="verifyOverlay">
+    <div class="overlay-card">
+      <div class="overlay-title">⚠️ UNDIAN SEMAKAN JURI ⚠️</div>
+      <div class="overlay-detail" id="verifyText">JATUHAN - BIRU</div>
+      <div class="vote-btn-group">
+        <button class="btn-vote btn-sah" onclick="sendVote(true)">SAH (YES)</button>
+        <button class="btn-vote btn-xsah" onclick="sendVote(false)">TAK SAH (NO)</button>
+      </div>
+    </div>
   </div>
 
   <script>
     const socket = io();
 
-    // Menyimpan identiti Juri tempatan
-    let currentJuriId = localStorage.getItem('silat_juri_id') || "1";
-    document.getElementById('juriIdSelect').value = currentJuriId;
-
-    let isCooldown = false; // Mencegah spam/double-click
-
-    function changeJuriId() {
-      currentJuriId = document.getElementById('juriIdSelect').value;
-      localStorage.setItem('silat_juri_id', currentJuriId);
+    function formatTime(seconds) {
+      const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+      const s = (seconds % 60).toString().padStart(2, '0');
+      return `${m}:${s}`;
     }
 
-    // MENGHANTAR MARKAH KE SERVER
-    function sendScore(color, points) {
-      if (isCooldown) return; // Sekat jika ketukan terlalu laju
-
-      isCooldown = true;
-      setTimeout(() => { isCooldown = false; }, 300); // Debounce 300ms
-
-      const payload = {
-        juriId: parseInt(currentJuriId),
-        corner: color,
-        points: points,
-        timestamp: Date.now()
-      };
-
-      socket.emit('submitScore', payload);
-      triggerFeedback(color, points);
-    }
-
-    // PENUNJUK VISUAL SELEPAS MENEKAN BUTANG
-    function triggerFeedback(color, points) {
-      const fb = document.getElementById('feedback');
-      fb.innerText = `+${points}`;
-      fb.style.color = color === 'red' ? '#ff4d4d' : '#4d94ff';
-      
-      fb.classList.add('show');
-      setTimeout(() => {
-        fb.classList.remove('show');
-      }, 300);
-    }
-
-    // MENERIMA KEMAS KINI KEADAAN DARIPADA SERVER
     socket.on('updateState', (state) => {
-      // Kemas kini paparan Pusingan
-      document.getElementById('roundDisplay').innerText = `PUSINGAN: ${state.currentRound}`;
-
-      // Kunci skrin jika pemasa tidak berjalan (paused/tamat)
-      const lockOverlay = document.getElementById('lockOverlay');
-      if (!state.timer.isRunning) {
-        lockOverlay.style.display = 'flex';
-      } else {
-        lockOverlay.style.display = 'none';
-      }
+      const timeStr = formatTime(state.timer.currentTime);
+      document.getElementById('matchStatus').innerText = `ROUND ${state.round} | ${timeStr}`;
     });
 
-    // ISYARAT DARI SERVER
-    socket.on('connect', () => {
-      console.log("Terhubung ke Server Pemarkahan.");
+    // HANTAR MARKAH & SIGNAL TEKANAN KEPADA SERVER
+    function sendScore(color, points) {
+      const juriId = document.getElementById('juriIdSelect').value;
+      
+      // Menggunakan event 'pressScore' & parameter 'points' yang sepadan dengan server.js
+      socket.emit('pressScore', { juriId, color, points });
+    }
+
+    socket.on('promptVerification', (data) => {
+      document.getElementById('verifyText').innerText = `${data.type} - SUDUT ${data.color.toUpperCase()}`;
+      document.getElementById('verifyOverlay').style.display = 'flex';
+    });
+
+    // HANTAR UNDIAN JURI
+    function sendVote(isApproved) {
+      const juriId = document.getElementById('juriIdSelect').value;
+      
+      // Diselaraskan dengan event 'submitVerification' pada server.js
+      socket.emit('submitVerification', { juriId, approved: isApproved });
+      document.getElementById('verifyOverlay').style.display = 'none';
+    }
+
+    socket.on('verificationResult', () => {
+      document.getElementById('verifyOverlay').style.display = 'none';
     });
   </script>
 </body>
