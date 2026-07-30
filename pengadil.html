@@ -361,18 +361,23 @@
         if (state.matchDetails.redTeam) document.getElementById('redTeam').value = state.matchDetails.redTeam;
       }
 
-      // Status Warna Butang Hukuman
+      // Status Warna Butang Hukuman (DQ dikeluarkan supaya butang TIDAK menyala)
       const penConfig = [
         { code: 'A1', type: 'active-amaran' },
         { code: 'A2', type: 'active-amaran' },
         { code: 'T1', type: 'active-teguran' },
         { code: 'T2', type: 'active-teguran' },
         { code: 'P1', type: 'active-peringatan' },
-        { code: 'P2', type: 'active-peringatan' },
-        { code: 'DQ', type: 'active-disqualify' }
+        { code: 'P2', type: 'active-peringatan' }
       ];
 
       ['blue', 'red'].forEach(color => {
+        // Matikan warna aktif pada butang DQ setiap kali updateState
+        const btnDQ = document.getElementById(`btn_${color}_DQ`);
+        if (btnDQ) {
+          btnDQ.classList.remove('active-disqualify');
+        }
+
         penConfig.forEach(p => {
           const btn = document.getElementById(`btn_${color}_${p.code}`);
           if (btn) {
