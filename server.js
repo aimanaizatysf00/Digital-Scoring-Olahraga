@@ -4,7 +4,9 @@ const { Server } = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+  cors: { origin: "*" }
+});
 
 app.use(express.static(__dirname));
 
@@ -13,7 +15,7 @@ app.get('/', (req, res) => res.sendFile(__dirname + '/pengadil.html'));
 app.get('/tv', (req, res) => res.sendFile(__dirname + '/tv.html'));
 app.get('/juri', (req, res) => res.sendFile(__dirname + '/juri.html'));
 
-// KEADAAN ASAL SISTEM (STATE)
+// KEADAAN ASAL SISTEM (STATE GLOBAL)
 let state = {
   timer: { currentTime: 90, duration: 90, isRunning: false },
   round: 1,
@@ -27,17 +29,14 @@ let state = {
   },
   score: { blue: 0, red: 0 },
   penaltyPoints: { blue: 0, red: 0 },
-  // Status paparan hukuman bagi pusingan semasa sahaja
   penalties: {
     blue: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false },
     red: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false }
   },
-  // Rekod akumulasi/terkumpul hukuman dari Round 1 hingga pusingan akhir
   totalPenalties: {
     blue: { A1: 0, A2: 0, T1: 0, T2: 0, P1: 0, P2: 0 },
     red: { A1: 0, A2: 0, T1: 0, T2: 0, P1: 0, P2: 0 }
   },
-  // Rekod statistik bilangan teknik bagi setiap sudut
   stats: {
     blue: { pukulan: 0, tendangan: 0, jatuhan: 0 },
     red: { pukulan: 0, tendangan: 0, jatuhan: 0 }
@@ -47,17 +46,15 @@ let state = {
 
 let timerInterval = null;
 let currentVerification = null; 
-
-// LOGIK MAJORITI JURI (TIMED BUFFER)
 let pendingScores = []; 
-const VERIFICATION_WINDOW = 2000; // Sela masa 2.0 saat untuk pengesahan juri
+const VERIFICATION_WINDOW = 2000; // Sela masa 2 saat untuk juri
 
 function addLog(text) {
   const timestamp = new Date().toLocaleTimeString('ms-MY', { hour12: false });
   io.emit('newLog', `[${timestamp}] ${text}`);
 }
 
-// FUNGSI AUTOMATIK HUKUMAN BERPERINGKAT (DENGAN PEMOTONGAN RASMI & MARKAH NEGATIF)
+// AUTOMATIK HUKUMAN BERPERINGKAT
 function applyPenalties(color, penaltyType) {
   if (!state.penalties[color]) {
     state.penalties[color] = { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false };
@@ -71,41 +68,23 @@ function applyPenalties(color, penaltyType) {
   const type = penaltyType.toUpperCase();
 
   if (type === 'AMARAN') {
-    if (!p.A1) {
-      p.A1 = true; appliedCode = 'A1'; pointsDeducted = 0; // Amaran 1: 0 Mata
-    } else if (!p.A2) {
-      p.A2 = true; appliedCode = 'A2'; pointsDeducted = 0; // Amaran 2: 0 Mata
-    } else {
-      // Amaran 1 & 2 dah ada -> Auto naik ke Teguran
-      return applyPenalties(color, 'TEGURAN');
-    }
+    if (!p.A1) { p.A1 = true; appliedCode = 'A1'; pointsDeducted = 0; }
+    else if (!p.A2) { p.A2 = true; appliedCode = 'A2'; pointsDeducted = 0; }
+    else { return applyPenalties(color, 'TEGURAN'); }
   } else if (type === 'TEGURAN') {
-    if (!p.T1) {
-      p.T1 = true; appliedCode = 'T1'; pointsDeducted = 1; // Teguran 1: -1 Mata
-    } else if (!p.T2) {
-      p.T2 = true; appliedCode = 'T2'; pointsDeducted = 2; // Teguran 2: -2 Mata
-    } else {
-      // Teguran 1 & 2 dah ada -> Auto naik ke Peringatan
-      return applyPenalties(color, 'PERINGATAN');
-    }
+    if (!p.T1) { p.T1 = true; appliedCode = 'T1'; pointsDeducted = 1; }
+    else if (!p.T2) { p.T2 = true; appliedCode = 'T2'; pointsDeducted = 2; }
+    else { return applyPenalties(color, 'PERINGATAN'); }
   } else if (type === 'PERINGATAN') {
-    if (!p.P1) {
-      p.P1 = true; appliedCode = 'P1'; pointsDeducted = 5; // Peringatan 1: -5 Mata
-    } else if (!p.P2) {
-      p.P2 = true; appliedCode = 'P2'; pointsDeducted = 10; // Peringatan 2: -10 Mata
-    } else {
-      // Peringatan melebihi P2 -> Auto Batal (DQ)
-      isDisqualified = true;
-      appliedCode = 'DQ';
-    }
+    if (!p.P1) { p.P1 = true; appliedCode = 'P1'; pointsDeducted = 5; }
+    else if (!p.P2) { p.P2 = true; appliedCode = 'P2'; pointsDeducted = 10; }
+    else { isDisqualified = true; appliedCode = 'DQ'; }
   }
 
-  // Rekodkan ke dalam fail terkumpul (totalPenalties)
   if (appliedCode && appliedCode !== 'DQ') {
     state.totalPenalties[color][appliedCode] += 1;
   }
 
-  // Tolak markah daripada skor sudut (Markah Boleh Negatif)
   if (pointsDeducted > 0) {
     state.score[color] -= pointsDeducted;
     state.penaltyPoints[color] += pointsDeducted;
@@ -114,83 +93,59 @@ function applyPenalties(color, penaltyType) {
   return { appliedCode, pointsDeducted, isDisqualified };
 }
 
-// LOGIK KIRAAN PEMENANG TERBAHARU
+// LOGIK KIRAAN PEMENANG (PENALTI & TEKNIK)
 function calculateWinner() {
   const blueScore = state.score.blue;
   const redScore = state.score.red;
 
-  // 1. SEMAKAN PERTAMA: TOTAL MARKAH AKHIR (MATA TERSEDIA)
-  if (blueScore > redScore) {
-    return { winner: 'blue', blueScore, redScore, reason: `Mata Akhir Tertinggi (${blueScore} - ${redScore})` };
-  }
-  if (redScore > blueScore) {
-    return { winner: 'red', blueScore, redScore, reason: `Mata Akhir Tertinggi (${redScore} - ${blueScore})` };
-  }
+  // 1. Semakan Markah Utama
+  if (blueScore > redScore) return { winner: 'blue', blueScore, redScore, reason: `Mata Akhir Tertinggi (${blueScore} - ${redScore})` };
+  if (redScore > blueScore) return { winner: 'red', blueScore, redScore, reason: `Mata Akhir Tertinggi (${redScore} - ${blueScore})` };
 
-  // 2. SEMAKAN KEDUA (JIKA MARKAH SERI): BEBAN PENALTI TERKUMPUL (ROUND 1 HINGGA 3)
-  const calculatePenaltyWeight = (color) => {
+  // 2. Semakan Beban Penalti (Beban penalti paling rendah dikira menang)
+  const getPenaltyWeight = (color) => {
     const tp = state.totalPenalties[color] || {};
-    let weight = 0;
-    // Pemberat nilai berat hukuman (P2 paling berat, A1 paling ringan)
-    weight += (tp.P2 || 0) * 10;
-    weight += (tp.P1 || 0) * 5;
-    weight += (tp.T2 || 0) * 2;
-    weight += (tp.T1 || 0) * 1;
-    weight += (tp.A2 || 0) * 0.5;
-    weight += (tp.A1 || 0) * 0.1;
-    return weight;
+    return (tp.P2 || 0) * 10 + (tp.P1 || 0) * 5 + (tp.T2 || 0) * 2 + (tp.T1 || 0) * 1 + (tp.A2 || 0) * 0.5 + (tp.A1 || 0) * 0.1;
   };
 
-  const bluePenaltyWeight = calculatePenaltyWeight('blue');
-  const redPenaltyWeight = calculatePenaltyWeight('red');
+  const bluePenaltyWeight = getPenaltyWeight('blue');
+  const redPenaltyWeight = getPenaltyWeight('red');
 
-  // Siapa yang beban penalti LEBIH KECIL (penalti/hukuman lebih sedikit) MENANG
-  if (bluePenaltyWeight < redPenaltyWeight) {
-    return { winner: 'blue', blueScore, redScore, reason: 'Markah Seri - Menang Hukuman/Penalti Lebih Sedikit' };
-  } 
-  if (redPenaltyWeight < bluePenaltyWeight) {
-    return { winner: 'red', blueScore, redScore, reason: 'Markah Seri - Menang Hukuman/Penalti Lebih Sedikit' };
-  }
+  if (bluePenaltyWeight < redPenaltyWeight) return { winner: 'blue', blueScore, redScore, reason: 'Markah Seri - Menang Hukuman/Penalti Lebih Sedikit' };
+  if (redPenaltyWeight < bluePenaltyWeight) return { winner: 'red', blueScore, redScore, reason: 'Markah Seri - Menang Hukuman/Penalti Lebih Sedikit' };
 
-  // 3. SEMAKAN KETIGA (JIKA MARKAH & HUKUMAN JUGA SERI): TEKNIK (Jatuhan -> Tendangan -> Pukulan)
+  // 3. Semakan Statistik Teknik (Jatuhan -> Tendangan -> Pukulan)
   const bStats = state.stats.blue;
   const rStats = state.stats.red;
 
-  // i. Semak Jatuhan Terbanyak
   if (bStats.jatuhan !== rStats.jatuhan) {
     const winner = bStats.jatuhan > rStats.jatuhan ? 'blue' : 'red';
-    const count = winner === 'blue' ? bStats.jatuhan : rStats.jatuhan;
-    return { winner, blueScore, redScore, reason: `Markah & Penalti Seri - Menang Jatuhan Terbanyak (${count})` };
+    return { winner, blueScore, redScore, reason: `Markah & Penalti Seri - Menang Jatuhan Terbanyak (${Math.max(bStats.jatuhan, rStats.jatuhan)})` };
   }
-
-  // ii. Semak Tendangan Terbanyak
   if (bStats.tendangan !== rStats.tendangan) {
     const winner = bStats.tendangan > rStats.tendangan ? 'blue' : 'red';
-    const count = winner === 'blue' ? bStats.tendangan : rStats.tendangan;
-    return { winner, blueScore, redScore, reason: `Markah & Penalti Seri - Menang Tendangan Terbanyak (${count})` };
+    return { winner, blueScore, redScore, reason: `Markah & Penalti Seri - Menang Tendangan Terbanyak (${Math.max(bStats.tendangan, rStats.tendangan)})` };
   }
-
-  // iii. Semak Pukulan Terbanyak
   if (bStats.pukulan !== rStats.pukulan) {
     const winner = bStats.pukulan > rStats.pukulan ? 'blue' : 'red';
-    const count = winner === 'blue' ? bStats.pukulan : rStats.pukulan;
-    return { winner, blueScore, redScore, reason: `Markah & Penalti Seri - Menang Pukulan Terbanyak (${count})` };
+    return { winner, blueScore, redScore, reason: `Markah & Penalti Seri - Menang Pukulan Terbanyak (${Math.max(bStats.pukulan, rStats.pukulan)})` };
   }
 
-  // 4. JIKA SEMUA PERKARA SAMA & SERI SEPENUHNYA
   return { winner: 'DRAW', blueScore, redScore, reason: 'Markah, Hukuman & Semua Statistik Teknik Seri' };
 }
 
+// SOCKET HANDLERS
 io.on('connection', (socket) => {
-  // Hantar state terkini sebaik sahaja mana-mana peranti bersambung
+  // Hantar data awal bila ada peranti baharu berhubung
   socket.emit('updateState', state);
 
-  // --- KAWALAN PEMASA (TIMER) ---
+  // --- KAWALAN PEMASA ---
   socket.on('controlTimer', (action) => {
     if (action === 'start' && !state.timer.isRunning) {
+      clearInterval(timerInterval); // Elak pemasa berjalan ganda (double speed bug)
       state.timer.isRunning = true;
       addLog(`▶️ Pemasa Dimulakan (Round ${state.round})`);
-      
+
       timerInterval = setInterval(() => {
         if (state.timer.currentTime > 0) {
           state.timer.currentTime--;
@@ -211,42 +166,30 @@ io.on('connection', (socket) => {
   });
 
   socket.on('setTimerDuration', (seconds) => {
-    state.timer.duration = seconds;
-    state.timer.currentTime = seconds;
+    clearInterval(timerInterval);
+    state.timer.isRunning = false;
+    state.timer.duration = Number(seconds);
+    state.timer.currentTime = Number(seconds);
     addLog(`⏱️ Masa Disetkan ke ${seconds} saat`);
     io.emit('updateState', state);
   });
 
-  // EVENT TUKAR PUSINGAN / SET ROUND
   socket.on('setRound', (roundNum) => {
-    // 1. Kemaskini nombor pusingan terkini
+    clearInterval(timerInterval);
     state.round = roundNum;
-
-    // 2. RESET BUTANG PAPARAN HUKUMAN PUSINGAN SAHAJA (Data totalPenalties kekal tersimpan)
     state.penalties = {
       blue: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false },
       red:  { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false }
     };
-
-    // 3. Reset pemasa ke masa asal & hentikan pemasa
     state.timer.currentTime = state.timer.duration || 90;
     state.timer.isRunning = false;
-
-    // 4. Hantar data terkini ke fail HTML
     io.emit('updateState', state);
     addLog(`--- PUSINGAN ${roundNum} BERMULA ---`);
   });
 
-  // --- KEMASKINI MAKLUMAT PESERTA / MATCH ---
+  // --- KEMASKINI MAKLUMAT ---
   socket.on('updateMatchDetails', (data) => {
-    state.matchInfo = {
-      className: data.className || state.matchInfo.className,
-      matchNo: data.matchNo || state.matchInfo.matchNo,
-      blueName: data.blueName || state.matchInfo.blueName,
-      blueTeam: data.blueTeam || state.matchInfo.blueTeam,
-      redName: data.redName || state.matchInfo.redName,
-      redTeam: data.redTeam || state.matchInfo.redTeam
-    };
+    state.matchInfo = { ...state.matchInfo, ...data };
     addLog(`📝 Maklumat Perlawanan Dikemaskini (Match #${state.matchInfo.matchNo})`);
     io.emit('updateState', state);
   });
@@ -259,14 +202,11 @@ io.on('connection', (socket) => {
     const now = Date.now();
 
     addLog(`🔘 Juri ${juriId} tekan +${points} (${color.toUpperCase()})`);
-
-    // 1. Hantar signal visual lampu ke TV/Pengadil
     io.emit('juriPressSignal', { juriId, color, points });
 
-    // 2. Tapis rekod butang yang telah melepasi tempoh masa 2 saat
+    // Tapis buffer melebihi 2 saat
     pendingScores = pendingScores.filter(item => (now - item.timestamp) <= VERIFICATION_WINDOW);
 
-    // 3. Semak jika juri yang SAMA menekan butang yang SAMA
     const existingIndex = pendingScores.findIndex(
       item => item.juriId === juriId && item.color === color && item.points === points
     );
@@ -277,34 +217,28 @@ io.on('connection', (socket) => {
       pendingScores.push({ juriId, color, points, timestamp: now });
     }
 
-    // 4. Cari senarai juri yang menekan warna dan markah yang sama
     const matchingPresses = pendingScores.filter(
       item => item.color === color && item.points === points
     );
-
-    // 5. Hitung bilangan juri UNIK
     const uniqueJuriCount = new Set(matchingPresses.map(item => item.juriId)).size;
 
-    // 6. SYARAT MAJORITI: Sekurang-kurangnya 2 JURI UNIK bersetuju
+    // Sekurang-kurangnya 2 Juri Unik
     if (uniqueJuriCount >= 2) {
       state.score[color] += points;
 
-      // Rekod statistik pukulan (+1) atau tendangan (+2)
       if (points === 1) state.stats[color].pukulan += 1;
       if (points === 2) state.stats[color].tendangan += 1;
 
-      addLog(`✅ MATA SAH! +${points} untuk SUDUT ${color.toUpperCase()} (${uniqueJuriCount} Juri bersetuju)`);
+      addLog(`✅ MATA SAH! +${points} untuk SUDUT ${color.toUpperCase()} (${uniqueJuriCount} Juri)`);
 
-      // Bersihkan buffer bagi kategori warna & markah ini
       pendingScores = pendingScores.filter(
         item => !(item.color === color && item.points === points)
       );
-
       io.emit('updateState', state);
     }
   });
 
-  // --- HUKUMAN & PENALTI MANUAL ---
+  // --- HUKUMAN & SCORE MANUAL ---
   socket.on('togglePenalty', ({ color, code, pts }) => {
     const isActive = state.penalties[color][code];
     state.penalties[color][code] = !isActive;
@@ -313,43 +247,35 @@ io.on('connection', (socket) => {
     if (!isActive) {
       state.score[color] += pts;
       state.penaltyPoints[color] += penaltyVal;
-      state.totalPenalties[color][code] += 1; // Rekod terkumpul
+      state.totalPenalties[color][code] += 1;
       addLog(`⚠️ Hukuman Diberi [${color.toUpperCase()}]: ${code} (${pts} mata)`);
     } else {
       state.score[color] -= pts;
       state.penaltyPoints[color] -= penaltyVal;
-      if (state.totalPenalties[color][code] > 0) {
-        state.totalPenalties[color][code] -= 1; // Batal rekod terkumpul
-      }
+      if (state.totalPenalties[color][code] > 0) state.totalPenalties[color][code] -= 1;
       addLog(`🔄 Hukuman Dibatalkan [${color.toUpperCase()}]: ${code}`);
     }
 
     if (state.penaltyPoints[color] < 0) state.penaltyPoints[color] = 0;
-
     io.emit('updateState', state);
   });
 
-  // --- PELARASAN MARKAH MANUAL ---
   socket.on('modifyScore', ({ color, pts }) => {
     state.score[color] += pts;
     addLog(`✏️ Markah Manual [${color.toUpperCase()}]: ${pts > 0 ? '+' : ''}${pts}`);
     io.emit('updateState', state);
   });
 
-  // --- SEMAKAN UNDIAN JURI (VERIFICATION) & AUTOMASI MARKAH ---
+  // --- SEMAKAN UNDIAN JURI (VERIFICATION) ---
   socket.on('requestVerification', (data) => {
-    currentVerification = {
-      type: data.type,
-      color: data.color,
-      votes: {}
-    };
+    currentVerification = { type: data.type, color: data.color, votes: {} };
     addLog(`🔍 Semakan Juri Dibuat: ${data.type} [${data.color.toUpperCase()}]`);
     io.emit('promptVerification', data);
   });
 
   socket.on('submitVerification', ({ juriId, approved }) => {
     if (!currentVerification) return;
-    
+
     currentVerification.votes[juriId] = approved;
     addLog(`🗳️ Undian Juri ${juriId}: ${approved ? 'SAH' : 'TAK SAH'}`);
 
@@ -361,62 +287,33 @@ io.on('connection', (socket) => {
 
       if (isAccepted) {
         if (type === 'JATUHAN') {
-          // AUTOMATIK +3 MATA JIKA JATUHAN SAH
           state.score[color] += 3;
-
-          // Rekod statistik jatuhan (+3)
           state.stats[color].jatuhan += 1;
-
           addLog(`✅ Jatuhan SAH (+3 Mata [${color.toUpperCase()}])`);
-
-          io.emit('verificationResult', {
-            type: currentVerification.type,
-            color: color,
-            isApproved: true,
-            text: `JATUHAN SAH (+3 MATA)`
-          });
-
+          io.emit('verificationResult', { type: currentVerification.type, color, isApproved: true, text: `JATUHAN SAH (+3 MATA)` });
         } else if (['AMARAN', 'TEGURAN', 'PERINGATAN'].includes(type)) {
-          // AUTOMATIK TUKAR HUKUMAN & POTONG MARKAH
           const penResult = applyPenalties(color, type);
-
           if (penResult.isDisqualified) {
             addLog(`❌ DISQUALIFIED: Sudut ${color.toUpperCase()} Dibatalkan (DQ)`);
             io.emit('disqualifiedAlert', color);
           } else {
             addLog(`⚠️ ${type} SAH (${penResult.appliedCode}): -${penResult.pointsDeducted} Mata [${color.toUpperCase()}]`);
-            
-            io.emit('verificationResult', {
-              type: currentVerification.type,
-              color: color,
-              isApproved: true,
-              text: `${type} SAH (${penResult.appliedCode}) -${penResult.pointsDeducted} MATA`
-            });
+            io.emit('verificationResult', { type: currentVerification.type, color, isApproved: true, text: `${type} SAH (${penResult.appliedCode}) -${penResult.pointsDeducted} MATA` });
           }
         } else {
-          io.emit('verificationResult', {
-            type: currentVerification.type,
-            color: color,
-            isApproved: true,
-            text: `${currentVerification.type} - SAH (${yesVotes}/3)`
-          });
+          io.emit('verificationResult', { type: currentVerification.type, color, isApproved: true, text: `${currentVerification.type} - SAH (${yesVotes}/3)` });
         }
       } else {
         addLog(`❌ Semakan ${type} TIDAK SAH [${color.toUpperCase()}]`);
-        io.emit('verificationResult', {
-          type: currentVerification.type,
-          color: color,
-          isApproved: false,
-          text: `${currentVerification.type} - TIDAK SAH (${3 - yesVotes}/3)`
-        });
+        io.emit('verificationResult', { type: currentVerification.type, color, isApproved: false, text: `${currentVerification.type} - TIDAK SAH (${3 - yesVotes}/3)` });
       }
 
       currentVerification = null;
-      io.emit('updateState', state); // Kemaskini skrin TV, Pengadil, Juri
+      io.emit('updateState', state);
     }
   });
 
-  // --- PEMENANG, DISQUALIFIED & RESET ---
+  // --- PEMENANG & RESET ---
   socket.on('publishWinnerToTV', () => {
     const result = calculateWinner();
     state.winnerData = result;
@@ -439,16 +336,15 @@ io.on('connection', (socket) => {
     state.penaltyPoints = { blue: 0, red: 0 };
     state.penalties = {
       blue: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false },
-      red: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false }
+      red:  { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false }
     };
     state.totalPenalties = {
       blue: { A1: 0, A2: 0, T1: 0, T2: 0, P1: 0, P2: 0 },
-      red: { A1: 0, A2: 0, T1: 0, T2: 0, P1: 0, P2: 0 }
+      red:  { A1: 0, A2: 0, T1: 0, T2: 0, P1: 0, P2: 0 }
     };
-    // Reset statistik kaunter teknik
     state.stats = {
       blue: { pukulan: 0, tendangan: 0, jatuhan: 0 },
-      red: { pukulan: 0, tendangan: 0, jatuhan: 0 }
+      red:  { pukulan: 0, tendangan: 0, jatuhan: 0 }
     };
     state.winnerData = null;
     currentVerification = null;
