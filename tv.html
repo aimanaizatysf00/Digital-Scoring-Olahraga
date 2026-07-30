@@ -196,11 +196,10 @@
 
         if (state.timer.isRunning) {
           timerElem.classList.remove('paused');
-          tvOverlay.style.display = 'none'; // Sembunyikan popup jika pemasa berjalan
+          tvOverlay.style.display = 'none';
         } else {
           timerElem.classList.add('paused');
           
-          // POPUP MASA TAMAT: Hanya ditunjukkan jika masa 0 DAN tiada pengisytiharan pemenang aktif
           if (state.timer.currentTime === 0 && !state.winnerData) {
             document.getElementById('tvVerifyTitle').innerText = "⏱️ PERHATIAN ⏱️";
             document.getElementById('tvVerifyDetail').innerText = "MASA TAMAT";
@@ -209,7 +208,6 @@
             document.getElementById('tvVerifyResult').className = "overlay-result result-xsah";
             tvOverlay.style.display = 'flex';
           } else {
-            // Sembunyikan popup "MASA TAMAT" sebaik pengadil menukar round / reset masa (> 0)
             if (tvOverlay.style.display === 'flex' && document.getElementById('tvVerifyDetail').innerText === "MASA TAMAT") {
               tvOverlay.style.display = 'none';
             }
@@ -244,39 +242,38 @@
     // KAWALAN LAMPU ISYARAT JURI APABILA BUTANG DITEKAN
     // =========================================================
     socket.on('juriPressSignal', (data) => {
-  const color = data.color;
-  const juriId = data.juriId;
-  
-  // Tukar data.points ke bentuk nombor secara selamat
-  const points = parseInt(data.points, 10);
+      const color = data.color;
+      const juriId = data.juriId;
+      
+      const points = parseInt(data.points, 10);
 
-  const targetId = `${color}_juri_${juriId}`;
-  const lampElement = document.getElementById(targetId);
+      const targetId = `${color}_juri_${juriId}`;
+      const lampElement = document.getElementById(targetId);
 
-  if (lampElement) {
-    let symbol = '';
+      if (lampElement) {
+        let symbol = '';
 
-    if (points === 1) {
-      symbol = '👊🏻';
-    } else if (points === 2) {
-      symbol = '🦶🏻';
-    } else if (points === 3) {
-      symbol = '🤼'; // Emoji Jatuhan
-    } else {
-      symbol = `+${data.points}`;
-    }
+        if (points === 1) {
+          symbol = '👊🏻';
+        } else if (points === 2) {
+          symbol = '🦶🏻';
+        } else if (points === 3) {
+          symbol = '🤼';
+        } else {
+          symbol = `+${data.points}`;
+        }
 
-    const originalText = `JURI ${juriId}`;
+        const originalText = `JURI ${juriId}`;
 
-    lampElement.innerText = symbol;
-    lampElement.classList.add('active');
+        lampElement.innerText = symbol;
+        lampElement.classList.add('active');
 
-    setTimeout(() => {
-      lampElement.innerText = originalText;
-      lampElement.classList.remove('active');
-    }, 1200);
-  }
-});
+        setTimeout(() => {
+          lampElement.innerText = originalText;
+          lampElement.classList.remove('active');
+        }, 1200);
+      }
+    });
 
     // SHOW WINNER
     socket.on('showWinnerOnTV', (data) => {
