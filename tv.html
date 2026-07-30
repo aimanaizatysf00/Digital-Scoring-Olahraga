@@ -244,34 +244,39 @@
     // KAWALAN LAMPU ISYARAT JURI APABILA BUTANG DITEKAN
     // =========================================================
     socket.on('juriPressSignal', (data) => {
-      const color = data.color;
-      const juriId = data.juriId;
-      const points = Number(data.points);
+  const color = data.color;
+  const juriId = data.juriId;
+  
+  // Tukar data.points ke bentuk nombor secara selamat
+  const points = parseInt(data.points, 10);
 
-      const targetId = `${color}_juri_${juriId}`;
-      const lampElement = document.getElementById(targetId);
+  const targetId = `${color}_juri_${juriId}`;
+  const lampElement = document.getElementById(targetId);
 
-      if (lampElement) {
-        let symbol = '';
-        if (points === 1) {
-          symbol = '👊🏻';
-        } else if (points === 2) {
-          symbol = '🦶🏻';
-        } else if (points === 3) {
-          symbol = '🧎🏻';
-        }
+  if (lampElement) {
+    let symbol = '';
 
-        const originalText = `JURI ${juriId}`;
+    if (points === 1) {
+      symbol = '👊🏻';
+    } else if (points === 2) {
+      symbol = '🦶🏻';
+    } else if (points === 3) {
+      symbol = '🧎🏻'; // Emoji Jatuhan
+    } else {
+      symbol = `+${data.points}`;
+    }
 
-        lampElement.innerText = symbol;
-        lampElement.classList.add('active');
+    const originalText = `JURI ${juriId}`;
 
-        setTimeout(() => {
-          lampElement.innerText = originalText;
-          lampElement.classList.remove('active');
-        }, 1200);
-      }
-    });
+    lampElement.innerText = symbol;
+    lampElement.classList.add('active');
+
+    setTimeout(() => {
+      lampElement.innerText = originalText;
+      lampElement.classList.remove('active');
+    }, 1200);
+  }
+});
 
     // SHOW WINNER
     socket.on('showWinnerOnTV', (data) => {
