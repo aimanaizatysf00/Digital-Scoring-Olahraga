@@ -80,9 +80,9 @@
       background: rgba(0,0,0,0.95); color: white; z-index: 9999; 
       flex-direction: column; justify-content: center; align-items: center; border: 10px solid #f1c40f; 
     }
-    .overlay-title { font-size: 3vw; font-weight: 900; color: #f1c40f; text-transform: uppercase; }
-    .overlay-detail { font-size: 5vw; font-weight: bold; margin: 20px 0; text-align: center; text-transform: uppercase; }
-    .overlay-result { font-size: 4vw; font-weight: 900; padding: 15px 30px; border-radius: 15px; text-transform: uppercase; }
+    .overlay-title { font-size: 3vw; font-weight: 900; color: #f1c40f; }
+    .overlay-detail { font-size: 5vw; font-weight: bold; margin: 20px 0; text-align: center; }
+    .overlay-result { font-size: 4vw; font-weight: 900; padding: 15px 30px; border-radius: 15px; }
     .result-sah { background: #2ecc71; color: white; }
     .result-xsah { background: #e74c3c; color: white; }
     .result-pending { background: #f39c12; color: black; }
@@ -196,10 +196,11 @@
 
         if (state.timer.isRunning) {
           timerElem.classList.remove('paused');
-          tvOverlay.style.display = 'none';
+          tvOverlay.style.display = 'none'; // Sembunyikan popup jika pemasa berjalan
         } else {
           timerElem.classList.add('paused');
           
+          // POPUP MASA TAMAT: Hanya ditunjukkan jika masa 0 DAN tiada pengisytiharan pemenang aktif
           if (state.timer.currentTime === 0 && !state.winnerData) {
             document.getElementById('tvVerifyTitle').innerText = "⏱️ PERHATIAN ⏱️";
             document.getElementById('tvVerifyDetail').innerText = "MASA TAMAT";
@@ -208,6 +209,7 @@
             document.getElementById('tvVerifyResult').className = "overlay-result result-xsah";
             tvOverlay.style.display = 'flex';
           } else {
+            // Sembunyikan popup "MASA TAMAT" sebaik pengadil menukar round / reset masa (> 0)
             if (tvOverlay.style.display === 'flex' && document.getElementById('tvVerifyDetail').innerText === "MASA TAMAT") {
               tvOverlay.style.display = 'none';
             }
@@ -300,14 +302,10 @@
       setTimeout(() => { overlay.style.display = 'none'; }, 10000);
     });
 
-    // PROMPT VERIFICATION (SEMAKAN PENGESAHAN JURI)
+    // PROMPT VERIFICATION
     socket.on('promptVerification', (data) => {
-      // Penukaran kata BLUE -> BIRU dan RED -> MERAH
-      const colorMalay = (data.color && data.color.toLowerCase() === 'blue') ? 'BIRU' : 'MERAH';
-      const typeUpper = (data.type || '').toUpperCase();
-
       document.getElementById('tvVerifyTitle').innerText = "⚠️ SEMAKAN PENGESAHAN JURI ⚠️";
-      document.getElementById('tvVerifyDetail').innerText = `${typeUpper} - SUDUT ${colorMalay}`;
+      document.getElementById('tvVerifyDetail').innerText = data.type + ' - SUDUT ' + data.color.toUpperCase();
       document.getElementById('tvVerifyDetail').style.color = "#ffffff";
       document.getElementById('tvVerifyResult').innerText = "MENUNGGU 3 JURI...";
       document.getElementById('tvVerifyResult').className = "overlay-result result-pending";
@@ -317,17 +315,15 @@
     // VERIFICATION RESULT
     socket.on('verificationResult', (data) => {
       const resElem = document.getElementById('tvVerifyResult');
-      resElem.innerText = (data.text || '').toUpperCase();
+      resElem.innerText = data.text;
       resElem.className = "overlay-result " + (data.isApproved ? "result-sah" : "result-xsah");
       setTimeout(() => { document.getElementById('tvOverlay').style.display = 'none'; }, 4000);
     });
 
     // DISQUALIFIED
     socket.on('disqualifiedAlert', (color) => {
-      const colorMalay = (color && color.toLowerCase() === 'blue') ? 'BIRU' : 'MERAH';
-
       document.getElementById('tvVerifyTitle').innerText = "❌ DISQUALIFIED / BATAL ❌";
-      document.getElementById('tvVerifyDetail').innerText = `SUDUT ${colorMalay} DIBATALKAN!`;
+      document.getElementById('tvVerifyDetail').innerText = "SUDUT " + color.toUpperCase() + " DIBATALKAN!";
       document.getElementById('tvVerifyDetail').style.color = "#e74c3c";
       document.getElementById('tvVerifyResult').innerText = "PESILAT BATAL";
       document.getElementById('tvVerifyResult').className = "overlay-result result-xsah";
