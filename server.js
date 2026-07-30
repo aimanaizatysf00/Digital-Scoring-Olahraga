@@ -1,377 +1,489 @@
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel Pengadil - Silat Olahraga</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
+    body { background: #121212; color: #ffffff; margin: 0; padding: 15px; }
 
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
+    h2, h3, h4 { margin: 5px 0; text-align: center; }
+    .section-title { color: #f1c40f; text-transform: uppercase; margin-bottom: 15px; font-weight: 800; }
+    .card { background: #1e1e1e; border-radius: 10px; padding: 15px; border: 1px solid #333; margin-bottom: 15px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
 
-app.use(express.static(__dirname));
+    .btn { padding: 10px 16px; font-size: 0.95rem; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; text-transform: uppercase; }
+    .btn:active { transform: scale(0.96); }
 
-// Routing Fail Web
-app.get('/', (req, res) => res.sendFile(__dirname + '/pengadil.html'));
-app.get('/tv', (req, res) => res.sendFile(__dirname + '/tv.html'));
-app.get('/juri', (req, res) => res.sendFile(__dirname + '/juri.html'));
+    .btn-success { background: #2ecc71; color: #fff; }
+    .btn-warning { background: #f39c12; color: #fff; }
+    .btn-danger { background: #e74c3c; color: #fff; }
+    .btn-info { background: #3498db; color: #fff; }
+    .btn-dark { background: #34495e; color: #fff; }
 
-// KEADAAN ASAL SISTEM (STATE)
-let state = {
-  timer: { currentTime: 90, duration: 90, isRunning: false },
-  round: 1,
-  matchInfo: {
-    className: 'CLASS A',
-    matchNo: '1',
-    blueName: 'PESILAT BIRU',
-    blueTeam: 'KONTINJEN BIRU',
-    redName: 'PESILAT MERAH',
-    redTeam: 'KONTINJEN MERAH'
-  },
-  score: { blue: 0, red: 0 },
-  penaltyPoints: { blue: 0, red: 0 },
-  penalties: {
-    blue: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false },
-    red: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false }
-  },
-  winnerData: null
-};
+    .controls-row { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 
-let timerInterval = null;
-let currentVerification = null; 
+    .timer-card { text-align: center; background: #0d1117; border: 2px solid #30363d; }
+    .timer-display { font-size: 3.5rem; font-family: monospace; font-weight: bold; color: #2ecc71; margin: 10px 0; }
+    .timer-display.paused { color: #e67e22; }
 
-// LOGIK MAJORITI JURI (TIMED BUFFER)
-let pendingScores = []; 
-const VERIFICATION_WINDOW = 2000; // Sela masa 2.0 saat untuk pengesahan juri
+    .form-row { display: flex; gap: 10px; margin-bottom: 10px; }
+    .form-row input { flex: 1; background: #2a2a2a; border: 1px solid #444; color: #fff; padding: 10px; border-radius: 5px; font-size: 0.9rem; }
 
-function addLog(text) {
-  const timestamp = new Date().toLocaleTimeString('ms-MY', { hour12: false });
-  io.emit('newLog', `[${timestamp}] ${text}`);
-}
+    .corner-header { font-size: 1.3rem; padding: 8px; border-radius: 6px; margin-bottom: 10px; text-align: center; font-weight: bold; }
+    .blue-corner { border: 2px solid #0080ff; }
+    .blue-header { background: #0080ff; color: #fff; }
+    .red-corner { border: 2px solid #d32f2f; }
+    .red-header { background: #d32f2f; color: #fff; }
+    .score-display { font-size: 3rem; font-weight: bold; text-align: center; margin: 5px 0; }
 
-// FUNGSI AUTOMATIK HUKUMAN BERPERINGKAT (DENGAN PEMOTONGAN RASMI & MARKAH NEGATIF)
-function applyPenalties(color, penaltyType) {
-  if (!state.penalties[color]) {
-    state.penalties[color] = { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false };
-  }
-
-  const p = state.penalties[color];
-  let appliedCode = '';
-  let pointsDeducted = 0;
-  let isDisqualified = false;
-
-  const type = penaltyType.toUpperCase();
-
-  if (type === 'AMARAN') {
-    if (!p.A1) {
-      p.A1 = true; appliedCode = 'A1'; pointsDeducted = 0; // Amaran 1: 0 Mata
-    } else if (!p.A2) {
-      p.A2 = true; appliedCode = 'A2'; pointsDeducted = 0; // Amaran 2: 0 Mata
-    } else {
-      // Amaran 1 & 2 dah ada -> Auto naik ke Teguran
-      return applyPenalties(color, 'TEGURAN');
+    .penalty-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 15px; }
+    .btn-penalty { 
+      background: #2a2a2a; color: #fff; border: 1px solid #444; padding: 12px 8px; 
+      font-size: 0.9rem; border-radius: 6px; cursor: pointer; display: flex; 
+      align-items: center; justify-content: center; gap: 6px; font-weight: bold;
     }
-  } else if (type === 'TEGURAN') {
-    if (!p.T1) {
-      p.T1 = true; appliedCode = 'T1'; pointsDeducted = 1; // Teguran 1: -1 Mata
-    } else if (!p.T2) {
-      p.T2 = true; appliedCode = 'T2'; pointsDeducted = 2; // Teguran 2: -2 Mata
-    } else {
-      // Teguran 1 & 2 dah ada -> Auto naik ke Peringatan
-      return applyPenalties(color, 'PERINGATAN');
+    .btn-penalty.active-amaran { background: #f1c40f !important; color: #000 !important; }
+    .btn-penalty.active-teguran { background: #e67e22 !important; color: #fff !important; }
+    .btn-penalty.active-peringatan { background: #c0392b !important; color: #fff !important; }
+
+    .manual-score-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin-top: 5px; }
+    .btn-sm { padding: 8px 0; font-size: 0.85rem; font-weight: bold; }
+    .verify-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 10px; }
+
+    .log-box { background: #0a0a0a; color: #00ffcc; font-family: monospace; height: 160px; overflow-y: auto; padding: 10px; border-radius: 6px; border: 1px solid #333; font-size: 0.85rem; }
+    .log-box p { margin: 3px 0; border-bottom: 1px solid #1a1a1a; padding-bottom: 2px; }
+
+    /* POP-UP CUSTOM STYLES */
+    .custom-modal-overlay {
+      display: none; 
+      position: fixed; 
+      top: 0; left: 0; 
+      width: 100%; height: 100%; 
+      background: rgba(0,0,0,0.85); 
+      z-index: 10000; 
+      justify-content: center; 
+      align-items: center;
     }
-  } else if (type === 'PERINGATAN') {
-    if (!p.P1) {
-      p.P1 = true; appliedCode = 'P1'; pointsDeducted = 5; // Peringatan 1: -5 Mata
-    } else if (!p.P2) {
-      p.P2 = true; appliedCode = 'P2'; pointsDeducted = 10; // Peringatan 2: -10 Mata
-    } else {
-      // Peringatan melebihi P2 -> Auto Batal (DQ)
-      isDisqualified = true;
-      appliedCode = 'DQ';
-    }
-  }
-
-  // Tolak markah daripada skor sudut (Markah Boleh Negatif)
-  if (pointsDeducted > 0) {
-    state.score[color] -= pointsDeducted;
-    state.penaltyPoints[color] += pointsDeducted;
-  }
-
-  return { appliedCode, pointsDeducted, isDisqualified };
-}
-
-function calculateWinner() {
-  const blueScore = state.score.blue;
-  const redScore = state.score.red;
-  const blueDeductions = state.penaltyPoints.blue;
-  const redDeductions = state.penaltyPoints.red;
-
-  let winner = 'DRAW';
-  let reason = '';
-
-  if (blueScore > redScore) {
-    winner = 'blue';
-    reason = 'Mata Akhir Tertinggi';
-  } else if (redScore > blueScore) {
-    winner = 'red';
-    reason = 'Mata Akhir Tertinggi';
-  } else {
-    if (blueDeductions < redDeductions) {
-      winner = 'blue';
-      reason = `Markah Seri (${blueScore}-${redScore}), Menang Hukuman Lebih Sedikit`;
-    } else if (redDeductions < blueDeductions) {
-      winner = 'red';
-      reason = `Markah Seri (${blueScore}-${redScore}), Menang Hukuman Lebih Sedikit`;
-    } else {
-      winner = 'DRAW';
-      reason = `Markah & Hukuman Sama Seri`;
-    }
-  }
-
-  return { winner, blueScore, redScore, reason };
-}
-
-io.on('connection', (socket) => {
-  // Hantar state terkini sebaik sahaja mana-mana peranti bersambung
-  socket.emit('updateState', state);
-
-  // --- KAWALAN PEMASA (TIMER) ---
-  socket.on('controlTimer', (action) => {
-    if (action === 'start' && !state.timer.isRunning) {
-      state.timer.isRunning = true;
-      addLog(`▶️ Pemasa Dimulakan (Round ${state.round})`);
-      
-      timerInterval = setInterval(() => {
-        if (state.timer.currentTime > 0) {
-          state.timer.currentTime--;
-          io.emit('updateState', state);
-        } else {
-          clearInterval(timerInterval);
-          state.timer.isRunning = false;
-          addLog(`⏱️ Masa Tamat untuk Round ${state.round}`);
-          io.emit('updateState', state);
-        }
-      }, 1000);
-    } else if (action === 'pause') {
-      clearInterval(timerInterval);
-      state.timer.isRunning = false;
-      addLog(`⏸️ Pemasa Dihentikan`);
-    }
-    io.emit('updateState', state);
-  });
-
-  socket.on('setTimerDuration', (seconds) => {
-    state.timer.duration = seconds;
-    state.timer.currentTime = seconds;
-    addLog(`⏱️ Masa Disetkan ke ${seconds} saat`);
-    io.emit('updateState', state);
-  });
-
-  socket.on('setRound', (r) => {
-    state.round = r;
-    state.timer.currentTime = state.timer.duration;
-    state.timer.isRunning = false;
-    clearInterval(timerInterval);
-    addLog(`🔄 Pusingan Ditukar ke Round ${r}`);
-    io.emit('updateState', state);
-  });
-
-  // --- KEMASKINI MAKLUMAT PESERTA / MATCH ---
-  socket.on('updateMatchDetails', (data) => {
-    state.matchInfo = {
-      className: data.className || state.matchInfo.className,
-      matchNo: data.matchNo || state.matchInfo.matchNo,
-      blueName: data.blueName || state.matchInfo.blueName,
-      blueTeam: data.blueTeam || state.matchInfo.blueTeam,
-      redName: data.redName || state.matchInfo.redName,
-      redTeam: data.redTeam || state.matchInfo.redTeam
-    };
-    addLog(`📝 Maklumat Perlawanan Dikemaskini (Match #${state.matchInfo.matchNo})`);
-    io.emit('updateState', state);
-  });
-
-  // --- LOGIK MAJORITI JURI (TERSUKAT & DIPATUHI) ---
-  socket.on('pressScore', (data) => {
-    const juriId = Number(data.juriId);
-    const color = String(data.color).toLowerCase();
-    const points = Number(data.points);
-    const now = Date.now();
-
-    addLog(`🔘 Juri ${juriId} tekan +${points} (${color.toUpperCase()})`);
-
-    // 1. Hantar signal visual lampu ke TV/Pengadil
-    io.emit('juriPressSignal', { juriId, color, points });
-
-    // 2. Tapis rekod butang yang telah melepasi tempoh masa 2 saat
-    pendingScores = pendingScores.filter(item => (now - item.timestamp) <= VERIFICATION_WINDOW);
-
-    // 3. Semak jika juri yang SAMA menekan butang yang SAMA dalam tetingkap masa ini
-    const existingIndex = pendingScores.findIndex(
-      item => item.juriId === juriId && item.color === color && item.points === points
-    );
-
-    if (existingIndex !== -1) {
-      pendingScores[existingIndex].timestamp = now;
-    } else {
-      pendingScores.push({ juriId, color, points, timestamp: now });
+    .custom-modal-box {
+      background: #1e1e1e; 
+      border: 2px solid #f1c40f; 
+      border-radius: 12px; 
+      padding: 20px; 
+      text-align: center; 
+      max-width: 400px; 
+      width: 90%; 
+      color: #fff;
+      box-shadow: 0px 4px 15px rgba(0,0,0,0.5);
     }
 
-    // 4. Cari senarai juri yang menekan warna dan markah yang sama
-    const matchingPresses = pendingScores.filter(
-      item => item.color === color && item.points === points
-    );
-
-    // 5. Hitung bilangan juri UNIK (Juri 1, Juri 2, Juri 3)
-    const uniqueJuriCount = new Set(matchingPresses.map(item => item.juriId)).size;
-
-    // 6. SYARAT MAJORITI: Sekurang-kurangnya 2 JURI UNIK bersetuju
-    if (uniqueJuriCount >= 2) {
-      state.score[color] += points;
-      addLog(`✅ MATA SAH! +${points} untuk SUDUT ${color.toUpperCase()} (${uniqueJuriCount} Juri bersetuju)`);
-
-      // Bersihkan buffer bagi kategori warna & markah ini
-      pendingScores = pendingScores.filter(
-        item => !(item.color === color && item.points === points)
-      );
-
-      io.emit('updateState', state);
+    @media (max-width: 768px) {
+      .grid-2 { grid-template-columns: 1fr; }
+      .form-row { flex-direction: column; }
     }
-  });
+  </style>
+</head>
+<body>
 
-  // --- HUKUMAN & PENALTI MANUAL ---
-  socket.on('togglePenalty', ({ color, code, pts }) => {
-    const isActive = state.penalties[color][code];
-    state.penalties[color][code] = !isActive;
-    const penaltyVal = Math.abs(pts);
+  <h2 class="section-title">📋 PANEL KAWALAN PENGADIL</h2>
 
-    if (!isActive) {
-      state.score[color] += pts;
-      state.penaltyPoints[color] += penaltyVal;
-      addLog(`⚠️ Hukuman Diberi [${color.toUpperCase()}]: ${code} (${pts} mata)`);
-    } else {
-      state.score[color] -= pts;
-      state.penaltyPoints[color] -= penaltyVal;
-      addLog(`🔄 Hukuman Dibatalkan [${color.toUpperCase()}]: ${code}`);
-    }
-
-    if (state.penaltyPoints[color] < 0) state.penaltyPoints[color] = 0;
-
-    io.emit('updateState', state);
-  });
-
-  // --- PELARASAN MARKAH MANUAL ---
-  socket.on('modifyScore', ({ color, pts }) => {
-    state.score[color] += pts;
-    addLog(`✏️ Markah Manual [${color.toUpperCase()}]: ${pts > 0 ? '+' : ''}${pts}`);
-    io.emit('updateState', state);
-  });
-
-  // --- SEMAKAN UNDIAN JURI (VERIFICATION) & AUTOMASI MARKAH ---
-  socket.on('requestVerification', (data) => {
-    currentVerification = {
-      type: data.type,
-      color: data.color,
-      votes: {}
-    };
-    addLog(`🔍 Semakan Juri Dibuat: ${data.type} [${data.color.toUpperCase()}]`);
-    io.emit('promptVerification', data);
-  });
-
-  socket.on('submitVerification', ({ juriId, approved }) => {
-    if (!currentVerification) return;
+  <!-- 1. KAWALAN PEMASA & PUSINGAN -->
+  <div class="card timer-card">
+    <h3>⏱️ KAWALAN PEMASA & PUSINGAN</h3>
+    <div class="timer-display paused" id="timerDisplay">01:30</div>
     
-    currentVerification.votes[juriId] = approved;
-    addLog(`🗳️ Undian Juri ${juriId}: ${approved ? 'SAH' : 'TAK SAH'}`);
+    <div class="controls-row">
+      <button class="btn btn-success" onclick="controlTimer('start')">▶️ MULA (START)</button>
+      <button class="btn btn-warning" onclick="controlTimer('pause')">⏸️ HENTI (PAUSE)</button>
+    </div>
 
-    if (Object.keys(currentVerification.votes).length >= 3) {
-      const yesVotes = Object.values(currentVerification.votes).filter(v => v === true).length;
-      const isAccepted = yesVotes >= 2;
-      const color = currentVerification.color;
-      const type = currentVerification.type.toUpperCase();
+    <div class="controls-row" style="margin-top: 10px;">
+      <span style="align-self: center; font-weight: bold; font-size: 0.9rem;">SET MASA:</span>
+      <button class="btn btn-dark" onclick="setTimerDuration(90)">01:30</button>
+      <button class="btn btn-dark" onclick="setTimerDuration(120)">02:00</button>
+    </div>
 
-      if (isAccepted) {
-        if (type === 'JATUHAN') {
-          // AUTOMATIK +3 MATA JIKA JATUHAN SAH
-          state.score[color] += 3;
-          addLog(`✅ Jatuhan SAH (+3 Mata [${color.toUpperCase()}])`);
+    <div class="controls-row" style="margin-top: 10px;">
+      <span style="align-self: center; font-weight: bold; font-size: 0.9rem;">SET ROUND:</span>
+      <button class="btn btn-info" onclick="setRound(1)">ROUND 1</button>
+      <button class="btn btn-info" onclick="setRound(2)">ROUND 2</button>
+      <button class="btn btn-info" onclick="setRound(3)">ROUND 3</button>
+    </div>
+  </div>
 
-          io.emit('verificationResult', {
-            type: currentVerification.type,
-            color: color,
-            isApproved: true,
-            text: `JATUHAN SAH (+3 MATA)`
-          });
+  <!-- 2. MAKLUMAT PERLAWANAN -->
+  <div class="card">
+    <h3>📝 MAKLUMAT PERLAWANAN</h3>
+    <div class="form-row">
+      <input type="text" id="className" placeholder="Class (contoh: CLASS A)" value="CLASS A">
+      <input type="text" id="matchNo" placeholder="Match No (contoh: 1)" value="1">
+    </div>
+    <div class="form-row">
+      <input type="text" id="blueName" placeholder="Pesilat Sudut Biru" value="PESILAT BIRU">
+      <input type="text" id="redName" placeholder="Pesilat Sudut Merah" value="PESILAT MERAH">
+    </div>
+    <div class="form-row">
+      <input type="text" id="blueTeam" placeholder="Kontinjen Sudut Biru" value="KONTINJEN BIRU">
+      <input type="text" id="redTeam" placeholder="Kontinjen Sudut Merah" value="KONTINJEN MERAH">
+    </div>
+    <div style="text-align: center; margin-top: 10px;">
+      <button class="btn btn-info" style="width: 100%;" onclick="updateMatchDetails()">🔄 KEMASKINI MAKLUMAT</button>
+    </div>
+  </div>
 
-        } else if (['AMARAN', 'TEGURAN', 'PERINGATAN'].includes(type)) {
-          // AUTOMATIK TUKAR HUKUMAN & POTONG MARKAH
-          const penResult = applyPenalties(color, type);
+  <!-- BIRU & MERAH -->
+  <div class="grid-2">
+    <!-- SUDUT BIRU -->
+    <div class="card blue-corner">
+      <div class="corner-header blue-header">SUDUT BIRU</div>
+      <div class="score-display" id="blueScore">0</div>
 
-          if (penResult.isDisqualified) {
-            addLog(`❌ DISQUALIFIED: Sudut ${color.toUpperCase()} Dibatalkan (DQ)`);
-            io.emit('disqualifiedAlert', color);
-          } else {
-            addLog(`⚠️ ${type} SAH (${penResult.appliedCode}): -${penResult.pointsDeducted} Mata [${color.toUpperCase()}]`);
-            
-            io.emit('verificationResult', {
-              type: currentVerification.type,
-              color: color,
-              isApproved: true,
-              text: `${type} SAH (${penResult.appliedCode}) -${penResult.pointsDeducted} MATA`
-            });
-          }
-        } else {
-          io.emit('verificationResult', {
-            type: currentVerification.type,
-            color: color,
-            isApproved: true,
-            text: `${currentVerification.type} - SAH (${yesVotes}/3)`
-          });
-        }
+      <h4 style="margin-top: 15px;">⚠️ HUKUMAN & PENALTI</h4>
+      <div class="penalty-grid">
+        <button class="btn-penalty" id="btn_blue_A1" onclick="togglePenalty('blue', 'A1', 0)">👈🏻 Amaran 1</button>
+        <button class="btn-penalty" id="btn_blue_A2" onclick="togglePenalty('blue', 'A2', 0)">👈🏻👈🏻 Amaran 2</button>
+        <button class="btn-penalty" id="btn_blue_T1" onclick="togglePenalty('blue', 'T1', -1)">☝🏻 Teguran 1 (-1)</button>
+        <button class="btn-penalty" id="btn_blue_T2" onclick="togglePenalty('blue', 'T2', -2)">✌🏻 Teguran 2 (-2)</button>
+        <button class="btn-penalty" id="btn_blue_P1" onclick="togglePenalty('blue', 'P1', -5)">🙋🏻‍♂️ Peringatan 1 (-5)</button>
+        <button class="btn-penalty" id="btn_blue_P2" onclick="togglePenalty('blue', 'P2', -10)">🙋🏻‍♂️🙋🏻‍♂️ Peringatan 2 (-10)</button>
+      </div>
+
+      <h4>✏️ PELARASAN MARKAH MANUAL</h4>
+      <div class="manual-score-grid">
+        <button class="btn btn-info btn-sm" onclick="modifyScore('blue', 1)">+1</button>
+        <button class="btn btn-info btn-sm" onclick="modifyScore('blue', 2)">+2</button>
+        <button class="btn btn-info btn-sm" onclick="modifyScore('blue', 3)">+3</button>
+        <button class="btn btn-info btn-sm" onclick="modifyScore('blue', 5)">+5</button>
+        <button class="btn btn-info btn-sm" onclick="modifyScore('blue', 10)">+10</button>
+      </div>
+      <div class="manual-score-grid" style="margin-top: 5px;">
+        <button class="btn btn-danger btn-sm" onclick="modifyScore('blue', -1)">-1</button>
+        <button class="btn btn-danger btn-sm" onclick="modifyScore('blue', -2)">-2</button>
+        <button class="btn btn-danger btn-sm" onclick="modifyScore('blue', -3)">-3</button>
+        <button class="btn btn-danger btn-sm" onclick="modifyScore('blue', -5)">-5</button>
+        <button class="btn btn-danger btn-sm" onclick="modifyScore('blue', -10)">-10</button>
+      </div>
+
+      <h4 style="margin-top: 15px;">🔍 SEMAKAN PENGESAHAN JURI</h4>
+      <div class="verify-grid">
+        <button class="btn btn-warning btn-sm" onclick="requestVerification('JATUHAN', 'blue')">Jatuhan</button>
+        <button class="btn btn-warning btn-sm" onclick="requestVerification('AMARAN', 'blue')">Amaran</button>
+        <button class="btn btn-warning btn-sm" onclick="requestVerification('TEGURAN', 'blue')">Teguran</button>
+        <button class="btn btn-warning btn-sm" onclick="requestVerification('PERINGATAN', 'blue')">Peringatan</button>
+      </div>
+    </div>
+
+    <!-- SUDUT MERAH -->
+    <div class="card red-corner">
+      <div class="corner-header red-header">SUDUT MERAH</div>
+      <div class="score-display" id="redScore">0</div>
+
+      <h4 style="margin-top: 15px;">⚠️ HUKUMAN & PENALTI</h4>
+      <div class="penalty-grid">
+        <button class="btn-penalty" id="btn_red_A1" onclick="togglePenalty('red', 'A1', 0)">👈🏻 Amaran 1</button>
+        <button class="btn-penalty" id="btn_red_A2" onclick="togglePenalty('red', 'A2', 0)">👈🏻👈🏻 Amaran 2</button>
+        <button class="btn-penalty" id="btn_red_T1" onclick="togglePenalty('red', 'T1', -1)">☝🏻 Teguran 1 (-1)</button>
+        <button class="btn-penalty" id="btn_red_T2" onclick="togglePenalty('red', 'T2', -2)">✌🏻 Teguran 2 (-2)</button>
+        <button class="btn-penalty" id="btn_red_P1" onclick="togglePenalty('red', 'P1', -5)">🙋🏻‍♂️ Peringatan 1 (-5)</button>
+        <button class="btn-penalty" id="btn_red_P2" onclick="togglePenalty('red', 'P2', -10)">🙋🏻‍♂️🙋🏻‍♂️ Peringatan 2 (-10)</button>
+      </div>
+
+      <h4>✏️ PELARASAN MARKAH MANUAL</h4>
+      <div class="manual-score-grid">
+        <button class="btn btn-info btn-sm" onclick="modifyScore('red', 1)">+1</button>
+        <button class="btn btn-info btn-sm" onclick="modifyScore('red', 2)">+2</button>
+        <button class="btn btn-info btn-sm" onclick="modifyScore('red', 3)">+3</button>
+        <button class="btn btn-info btn-sm" onclick="modifyScore('red', 5)">+5</button>
+        <button class="btn btn-info btn-sm" onclick="modifyScore('red', 10)">+10</button>
+      </div>
+      <div class="manual-score-grid" style="margin-top: 5px;">
+        <button class="btn btn-danger btn-sm" onclick="modifyScore('red', -1)">-1</button>
+        <button class="btn btn-danger btn-sm" onclick="modifyScore('red', -2)">-2</button>
+        <button class="btn btn-danger btn-sm" onclick="modifyScore('red', -3)">-3</button>
+        <button class="btn btn-danger btn-sm" onclick="modifyScore('red', -5)">-5</button>
+        <button class="btn btn-danger btn-sm" onclick="modifyScore('red', -10)">-10</button>
+      </div>
+
+      <h4 style="margin-top: 15px;">🔍 SEMAKAN PENGESAHAN JURI</h4>
+      <div class="verify-grid">
+        <button class="btn btn-warning btn-sm" onclick="requestVerification('JATUHAN', 'red')">Jatuhan</button>
+        <button class="btn btn-warning btn-sm" onclick="requestVerification('AMARAN', 'red')">Amaran</button>
+        <button class="btn btn-warning btn-sm" onclick="requestVerification('TEGURAN', 'red')">Teguran</button>
+        <button class="btn btn-warning btn-sm" onclick="requestVerification('PERINGATAN', 'red')">Peringatan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOG REAL-TIME -->
+  <div class="card" style="margin-top: 15px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <h3 style="margin: 0;">📜 LOG PERLAWANAN REAL-TIME</h3>
+      <button class="btn btn-dark" onclick="downloadLog()" style="font-size: 0.8rem; padding: 6px 12px;">📥 MUAT TURUN LOG (.TXT)</button>
+    </div>
+    <div class="log-box" id="logList"></div>
+  </div>
+
+  <!-- PENGISYTIHARAN PEMENANG -->
+  <div class="card" style="text-align: center; background: #181818;">
+    <h3>🏆 PENGISYTIHARAN PEMENANG</h3>
+    <div class="controls-row">
+      <button class="btn btn-success" style="font-size: 1.1rem; padding: 15px 30px;" onclick="publishWinner()">🏆 PENGISYTIHARAN PEMENANG KE SKRIN TV</button>
+      <button class="btn btn-danger" onclick="resetAll()">🔄 RESET KESELURUHAN</button>
+    </div>
+  </div>
+
+  <!-- POP-UP OVERLAY MASA TAMAT PENGADIL -->
+  <div id="pengadilOverlay" class="custom-modal-overlay">
+    <div class="custom-modal-box" style="border-color: #f1c40f;">
+      <h2 id="popTitle" style="color: #f1c40f; margin-top: 0;">⏱️ MASA TAMAT ⏱️</h2>
+      <h3 id="popSubTitle" style="color: #2ecc71; margin: 10px 0;">PUSINGAN TAMAT</h3>
+      <div id="popContent" style="background: #111; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid #333;"></div>
+      <div id="popActions" style="display: flex; flex-direction: column; gap: 10px; width: 100%;"></div>
+    </div>
+  </div>
+
+  <!-- POP-UP PENGESAHAN IN-SCREEN -->
+  <div id="confirmModalOverlay" class="custom-modal-overlay">
+    <div class="custom-modal-box">
+      <h3 id="confirmTitle" style="margin-top: 0; color: #f39c12;">❓ PENGESAHAN</h3>
+      <p id="confirmMessage" style="font-size: 1.05rem; margin: 15px 0; color: #ddd;"></p>
+      <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
+        <button id="btnConfirmOk" class="btn btn-success" style="flex: 1;">OK</button>
+        <button id="btnConfirmCancel" class="btn btn-danger" style="flex: 1;">BATAL</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const socket = io();
+    let currentLogs = [];
+    let hasPoppedForRound = false;
+
+    // UTILITY: POP-UP IN-SCREEN (OK / CANCEL)
+    function showInScreenConfirm(title, message, onConfirm) {
+      const overlay = document.getElementById('confirmModalOverlay');
+      const titleElem = document.getElementById('confirmTitle');
+      const msgElem = document.getElementById('confirmMessage');
+      const btnOk = document.getElementById('btnConfirmOk');
+      const btnCancel = document.getElementById('btnConfirmCancel');
+
+      titleElem.innerText = title;
+      msgElem.innerText = message;
+
+      overlay.style.display = 'flex';
+
+      btnOk.onclick = function() {
+        overlay.style.display = 'none';
+        if (onConfirm) onConfirm();
+      };
+
+      btnCancel.onclick = function() {
+        overlay.style.display = 'none';
+      };
+    }
+
+    function formatTime(seconds) {
+      const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+      const s = (seconds % 60).toString().padStart(2, '0');
+      return `${m}:${s}`;
+    }
+
+    socket.on('updateState', (state) => {
+      if (!state) return;
+
+      const timerElem = document.getElementById('timerDisplay');
+      timerElem.innerText = formatTime(state.timer.currentTime);
+
+      if (state.timer.isRunning) {
+        timerElem.classList.remove('paused');
+        hasPoppedForRound = false; 
+        document.getElementById('pengadilOverlay').style.display = 'none';
       } else {
-        addLog(`❌ Semakan ${type} TIDAK SAH [${color.toUpperCase()}]`);
-        io.emit('verificationResult', {
-          type: currentVerification.type,
-          color: color,
-          isApproved: false,
-          text: `${currentVerification.type} - TIDAK SAH (${3 - yesVotes}/3)`
-        });
+        timerElem.classList.add('paused');
       }
 
-      currentVerification = null;
-      io.emit('updateState', state); // Kemaskini skrin TV, Pengadil, Juri
+      document.getElementById('blueScore').innerText = state.score.blue;
+      document.getElementById('redScore').innerText = state.score.red;
+
+      // Status Warna Butang Hukuman
+      const penConfig = [
+        { code: 'A1', type: 'active-amaran' },
+        { code: 'A2', type: 'active-amaran' },
+        { code: 'T1', type: 'active-teguran' },
+        { code: 'T2', type: 'active-teguran' },
+        { code: 'P1', type: 'active-peringatan' },
+        { code: 'P2', type: 'active-peringatan' }
+      ];
+
+      ['blue', 'red'].forEach(color => {
+        penConfig.forEach(p => {
+          const btn = document.getElementById(`btn_${color}_${p.code}`);
+          if (btn && state.penalties && state.penalties[color]) {
+            btn.classList.remove('active-amaran', 'active-teguran', 'active-peringatan');
+            if (state.penalties[color][p.code]) {
+              btn.classList.add(p.type);
+            }
+          }
+        });
+      });
+
+      // SEMAK BILA MASA = 00:00 UNTUK POP-UP
+      if (state.timer.currentTime === 0 && !state.timer.isRunning && !hasPoppedForRound) {
+        hasPoppedForRound = true;
+        showRoundEndModal(state);
+      }
+    });
+
+    socket.on('newLog', (logText) => {
+      currentLogs.unshift(logText);
+      const logList = document.getElementById('logList');
+      if (logList) {
+        const p = document.createElement('p');
+        p.innerText = logText;
+        logList.insertBefore(p, logList.firstChild);
+      }
+    });
+
+    // RECEIVE WINNER RESULT FROM SERVER
+    socket.on('showWinnerOnTV', (result) => {
+      let winText = "";
+      if (result.winner === 'blue') {
+        winText = `<span style="color: #3498db; font-size: 1.3rem;">🔵 PEMENANG: SUDUT BIRU</span><br><small style="color: #aaa;">(${result.reason})</small>`;
+      } else if (result.winner === 'red') {
+        winText = `<span style="color: #e74c3c; font-size: 1.3rem;">🔴 PEMENANG: SUDUT MERAH</span><br><small style="color: #aaa;">(${result.reason})</small>`;
+      } else {
+        winText = `<span style="color: #f1c40f; font-size: 1.3rem;">🤝 KEPUTUSAN: SERI</span><br><small style="color: #aaa;">(${result.reason})</small>`;
+      }
+
+      showInScreenConfirm('🏆 KEPUTUSAN PEMENANG', winText, null);
+    });
+
+    // FUNGSI POP-UP MODAL
+    function showRoundEndModal(state) {
+      const overlay = document.getElementById('pengadilOverlay');
+      const popTitle = document.getElementById('popTitle');
+      const popSubTitle = document.getElementById('popSubTitle');
+      const popContent = document.getElementById('popContent');
+      const popActions = document.getElementById('popActions');
+
+      const blueScore = state.score.blue;
+      const redScore = state.score.red;
+      const currentRound = state.round;
+
+      popContent.innerHTML = `
+        <div style="display: flex; justify-content: space-around; font-size: 1.4rem; font-weight: bold;">
+          <span style="color: #3498db;">BIRU: ${blueScore}</span>
+          <span style="color: #e74c3c;">MERAH: ${redScore}</span>
+        </div>
+      `;
+
+      if (currentRound < 3) {
+        popTitle.innerText = "⏱️ MASA TAMAT ⏱️";
+        popSubTitle.innerText = `PUSINGAN ${currentRound} TAMAT`;
+        popSubTitle.style.color = "#f39c12";
+
+        const nextRound = currentRound + 1;
+        popActions.innerHTML = `
+          <button class="btn btn-info" style="padding: 12px; font-size: 1rem;" onclick="goToNextRound(${nextRound})">➡️ PUSINGAN SETERUSNYA (ROUND ${nextRound})</button>
+          <button class="btn btn-success" style="padding: 12px; font-size: 1rem;" onclick="publishWinnerFromModal()">🏆 PAMERKAN KEPUTUSAN PEMENANG</button>
+        `;
+      } else {
+        popTitle.innerText = "🏁 PERLAWANAN TAMAT 🏁";
+        popSubTitle.innerText = "PUSINGAN 3 (AKHIR) TAMAT";
+        popSubTitle.style.color = "#2ecc71";
+
+        popActions.innerHTML = `
+          <button class="btn btn-success" style="padding: 14px; font-size: 1.1rem;" onclick="publishWinnerFromModal()">🏆 PAMERKAN KEPUTUSAN PEMENANG</button>
+        `;
+      }
+
+      overlay.style.display = "flex";
     }
-  });
 
-  // --- PEMENANG, DISQUALIFIED & RESET ---
-  socket.on('publishWinnerToTV', () => {
-    const result = calculateWinner();
-    state.winnerData = result;
-    addLog(`🏆 PEMENANG DIISYTIHARKAN: ${result.winner.toUpperCase()} (${result.reason})`);
-    io.emit('updateState', state);
-    io.emit('showWinnerOnTV', result);
-  });
+    function goToNextRound(nextRound) {
+      socket.emit('setRound', nextRound);
+      closePengadilModal();
+    }
 
-  socket.on('disqualify', (color) => {
-    addLog(`❌ DISQUALIFIED: Sudut ${color.toUpperCase()} Dibatalkan`);
-    io.emit('disqualifiedAlert', color);
-  });
+    function publishWinnerFromModal() {
+      socket.emit('publishWinnerToTV');
+      closePengadilModal();
+    }
 
-  socket.on('resetScore', () => {
-    clearInterval(timerInterval);
-    state.timer.currentTime = state.timer.duration;
-    state.timer.isRunning = false;
-    state.round = 1;
-    state.score = { blue: 0, red: 0 };
-    state.penaltyPoints = { blue: 0, red: 0 };
-    state.penalties = {
-      blue: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false },
-      red: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false }
-    };
-    state.winnerData = null;
-    currentVerification = null;
-    pendingScores = [];
-    addLog(`🔄 Sistem Direset Keseluruhan`);
-    io.emit('updateState', state);
-  });
-});
+    function closePengadilModal() {
+      document.getElementById('pengadilOverlay').style.display = 'none';
+    }
 
-const PORT = 3000;
-server.listen(PORT, () => console.log(`Server Silat Berjalan di http://localhost:${PORT}`));
+    // ACTIONS
+    function controlTimer(action) { socket.emit('controlTimer', action); }
+    function setTimerDuration(seconds) { socket.emit('setTimerDuration', seconds); }
+    function setRound(roundNum) { socket.emit('setRound', roundNum); }
+
+    function updateMatchDetails() {
+      const data = {
+        className: document.getElementById('className').value,
+        matchNo: document.getElementById('matchNo').value,
+        blueName: document.getElementById('blueName').value,
+        redName: document.getElementById('redName').value,
+        blueTeam: document.getElementById('blueTeam').value,
+        redTeam: document.getElementById('redTeam').value
+      };
+      socket.emit('updateMatchDetails', data);
+    }
+
+    function togglePenalty(color, code, pts) { socket.emit('togglePenalty', { color, code, pts }); }
+    function modifyScore(color, pts) { socket.emit('modifyScore', { color, pts }); }
+
+    // SEMAKAN PENGESAHAN JURI (POP-UP IN-SCREEN)
+    function requestVerification(type, color) {
+      const colorName = color.toUpperCase() === 'BLUE' ? 'BIRU' : 'MERAH';
+      showInScreenConfirm(
+        '🔍 SEMAKAN JURI',
+        `Minta pengesahan ${type} bagi Sudut ${colorName}?`,
+        function() {
+          socket.emit('requestVerification', { type, color });
+        }
+      );
+    }
+
+    function downloadLog() {
+      if (currentLogs.length === 0) return;
+      const matchNo = document.getElementById('matchNo').value || '1';
+      const logContent = `=== REKOD LOG PERLAWANAN SILAT (MATCH ${matchNo}) ===\n\n` + currentLogs.slice().reverse().join('\n');
+      const blob = new Blob([logContent], { type: 'text/plain;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `Log_Silat_Match_${matchNo}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    // PENGISYTIHARAN PEMENANG (POP-UP IN-SCREEN)
+    function publishWinner() {
+      showInScreenConfirm(
+        '🏆 ISYTIHAR PEMENANG',
+        'Sahkan pengumuman pemenang ke skrin TV?',
+        function() {
+          socket.emit('publishWinnerToTV');
+        }
+      );
+    }
+
+    // RESET KESELURUHAN (POP-UP IN-SCREEN)
+    function resetAll() {
+      showInScreenConfirm(
+        '⚠️ RESET KESELURUHAN',
+        'Adakah anda pasti untuk reset keseluruhan perlawanan?',
+        function() {
+          socket.emit('resetScore');
+          document.getElementById('logList').innerHTML = '';
+          currentLogs = [];
+        }
+      );
+    }
+  </script>
+</body>
+</html>
