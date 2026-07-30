@@ -159,13 +159,14 @@
         <button class="btn-penalty btn-span-2" id="btn_blue_DQ" onclick="confirmDisqualification('blue')">🚫 Diskualifikasi (DQ)</button>
       </div>
 
-      <h4>✏️ PELARASAN MARKAH MANUAL</h4>
+      <h4>🤼 MARKAH JATUHAN</h4>
       <!-- KOTAK MARKAH JATUHAN BIRU -->
       <div class="jatuhan-score-grid">
         <button class="btn-jatuhan btn-info" onclick="confirmJatuhanScore('blue', 3)">🤼 JATUHAN +3</button>
         <button class="btn-jatuhan btn-danger" onclick="confirmJatuhanScore('blue', -3)">❌ JATUHAN -3</button>
       </div>
 
+      <h4 style="margin-top: 15px;">✏️ PELARASAN MARKAH MANUAL</h4>
       <!-- KOTAK MARKAH MANUAL LAJUR KIRI (+), LAJUR KANAN (-) -->
       <div class="manual-score-grid">
         <button class="btn btn-info btn-sm" onclick="modifyScore('blue', 1)">+1</button>
@@ -209,13 +210,14 @@
         <button class="btn-penalty btn-span-2" id="btn_red_DQ" onclick="confirmDisqualification('red')">🚫 Diskualifikasi (DQ)</button>
       </div>
 
-      <h4>✏️ PELARASAN MARKAH MANUAL</h4>
+      <h4>🤼 MARKAH JATUHAN</h4>
       <!-- KOTAK MARKAH JATUHAN MERAH -->
       <div class="jatuhan-score-grid">
         <button class="btn-jatuhan btn-danger" onclick="confirmJatuhanScore('red', 3)">🤼 JATUHAN +3</button>
         <button class="btn-jatuhan btn-danger" onclick="confirmJatuhanScore('red', -3)">❌ JATUHAN -3</button>
       </div>
 
+      <h4 style="margin-top: 15px;">✏️ PELARASAN MARKAH MANUAL</h4>
       <!-- KOTAK MARKAH MANUAL LAJUR KIRI (+), LAJUR KANAN (-) -->
       <div class="manual-score-grid">
         <button class="btn btn-danger btn-sm" onclick="modifyScore('red', 1)">+1</button>
@@ -513,7 +515,8 @@
         '🤼 MARKAH JATUHAN',
         `Adakah anda pasti untuk <b>${actionText}</b> bagi <b>${colorText}</b>?`,
         function() {
-          modifyScore(color, pts);
+          // Menghantar event 'addJatuhan' khusus untuk markah Jatuhan
+          socket.emit('addJatuhan', { color, pts });
         }
       );
     }
