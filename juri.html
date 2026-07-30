@@ -249,7 +249,7 @@
       </div>
       <!-- BUTANG JATUHAN SUDUT BIRU -->
       <button class="btn-jatuhan btn-blue-3" onclick="sendScore('blue', 3)">
-        🤼
+        💥 
         <span>JATUHAN (+3)</span>
       </button>
     </div>
@@ -269,7 +269,7 @@
       </div>
       <!-- BUTANG JATUHAN SUDUT MERAH -->
       <button class="btn-jatuhan btn-red-3" onclick="sendScore('red', 3)">
-        🤼
+        💥 
         <span>JATUHAN (+3)</span>
       </button>
     </div>
@@ -298,30 +298,26 @@
     }
 
     socket.on('updateState', (state) => {
-      if (!state || !state.timer) return;
-      const timeStr = formatTime(state.timer.currentTime || 0);
-      document.getElementById('matchStatus').innerText = `ROUND ${state.round || 1} | ${timeStr}`;
+      const timeStr = formatTime(state.timer.currentTime);
+      document.getElementById('matchStatus').innerText = `ROUND ${state.round} | ${timeStr}`;
     });
 
     // HANTAR MARKAH & SIGNAL TEKANAN KEPADA SERVER
     function sendScore(color, points) {
-      const juriIdVal = document.getElementById('juriIdSelect').value;
-      const juriId = parseInt(juriIdVal, 10);
+      const juriId = document.getElementById('juriIdSelect').value;
       
       // Menggunakan event 'pressScore' & parameter 'points' yang sepadan dengan server.js
-      socket.emit('pressScore', { juriId, color, points: parseInt(points, 10) });
+      socket.emit('pressScore', { juriId, color, points });
     }
 
     socket.on('promptVerification', (data) => {
-      if (!data) return;
-      document.getElementById('verifyText').innerText = `${data.type} - SUDUT ${(data.color || '').toUpperCase()}`;
+      document.getElementById('verifyText').innerText = `${data.type} - SUDUT ${data.color.toUpperCase()}`;
       document.getElementById('verifyOverlay').style.display = 'flex';
     });
 
     // HANTAR UNDIAN JURI
     function sendVote(isApproved) {
-      const juriIdVal = document.getElementById('juriIdSelect').value;
-      const juriId = parseInt(juriIdVal, 10);
+      const juriId = document.getElementById('juriIdSelect').value;
       
       // Diselaraskan dengan event 'submitVerification' pada server.js
       socket.emit('submitVerification', { juriId, approved: isApproved });
