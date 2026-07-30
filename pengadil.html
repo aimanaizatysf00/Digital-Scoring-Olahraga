@@ -172,10 +172,10 @@
 
       <h4 style="margin-top: 15px;">🔍 SEMAKAN PENGESAHAN JURI</h4>
       <div class="verify-grid">
-        <button class="btn btn-warning btn-sm" onclick="requestVerification('JATUHAN', 'blue')">Jatuhan</button>
-        <button class="btn btn-warning btn-sm" onclick="requestVerification('AMARAN', 'blue')">Amaran</button>
-        <button class="btn btn-warning btn-sm" onclick="requestVerification('TEGURAN', 'blue')">Teguran</button>
-        <button class="btn btn-warning btn-sm" onclick="requestVerification('PERINGATAN', 'blue')">Peringatan</button>
+        <button class="btn btn-warning btn-sm" onclick="requestVerification('Jatuhan', 'blue')">Jatuhan</button>
+        <button class="btn btn-warning btn-sm" onclick="requestVerification('Pelanggaran Ringan', 'blue')">Pelanggaran Ringan</button>
+        <button class="btn btn-warning btn-sm" onclick="requestVerification('Pelanggaran Sederhana', 'blue')">Pelanggaran Sederhana</button>
+        <button class="btn btn-warning btn-sm" onclick="requestVerification('Pelanggaran Berat', 'blue')">Pelanggaran Berat</button>
       </div>
     </div>
 
@@ -212,10 +212,10 @@
 
       <h4 style="margin-top: 15px;">🔍 SEMAKAN PENGESAHAN JURI</h4>
       <div class="verify-grid">
-        <button class="btn btn-warning btn-sm" onclick="requestVerification('JATUHAN', 'red')">Jatuhan</button>
-        <button class="btn btn-warning btn-sm" onclick="requestVerification('AMARAN', 'red')">Amaran</button>
-        <button class="btn btn-warning btn-sm" onclick="requestVerification('TEGURAN', 'red')">Teguran</button>
-        <button class="btn btn-warning btn-sm" onclick="requestVerification('PERINGATAN', 'red')">Peringatan</button>
+        <button class="btn btn-warning btn-sm" onclick="requestVerification('Jatuhan', 'red')">Jatuhan</button>
+        <button class="btn btn-warning btn-sm" onclick="requestVerification('Pelanggaran Ringan', 'red')">Pelanggaran Ringan</button>
+        <button class="btn btn-warning btn-sm" onclick="requestVerification('Pelanggaran Sederhana', 'red')">Pelanggaran Sederhana</button>
+        <button class="btn btn-warning btn-sm" onclick="requestVerification('Pelanggaran Berat', 'red')">Pelanggaran Berat</button>
       </div>
     </div>
   </div>
@@ -469,12 +469,12 @@
     function togglePenalty(color, code, pts) { socket.emit('togglePenalty', { color, code, pts }); }
     function modifyScore(color, pts) { socket.emit('modifyScore', { color, pts }); }
 
-    // SEMAKAN PENGESAHAN JURI (POP-UP IN-SCREEN)
+    // SEMAKAN PENGESAHAN JURI (POP-UP IN-SCREEN METADATA SAMAN TEKS)
     function requestVerification(type, color) {
       const colorName = color.toUpperCase() === 'BLUE' ? 'BIRU' : 'MERAH';
       showInScreenConfirm(
         '🔍 SEMAKAN JURI',
-        `Minta pengesahan ${type} bagi Sudut ${colorName}?`,
+        `Minta pengesahan <b>${type}</b> bagi Sudut <b>${colorName}</b>?`,
         function() {
           socket.emit('requestVerification', { type, color });
         }
