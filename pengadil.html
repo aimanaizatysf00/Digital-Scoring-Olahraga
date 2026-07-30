@@ -361,22 +361,21 @@
         if (state.matchDetails.redTeam) document.getElementById('redTeam').value = state.matchDetails.redTeam;
       }
 
-      // Status Warna Butang Hukuman
+      // Status Warna Butang Hukuman (DQ dikeluarkan supaya diselia secara manual di frontend)
       const penConfig = [
         { code: 'A1', type: 'active-amaran' },
         { code: 'A2', type: 'active-amaran' },
         { code: 'T1', type: 'active-teguran' },
         { code: 'T2', type: 'active-teguran' },
         { code: 'P1', type: 'active-peringatan' },
-        { code: 'P2', type: 'active-peringatan' },
-        { code: 'DQ', type: 'active-disqualify' }
+        { code: 'P2', type: 'active-peringatan' }
       ];
 
       ['blue', 'red'].forEach(color => {
         penConfig.forEach(p => {
           const btn = document.getElementById(`btn_${color}_${p.code}`);
           if (btn) {
-            btn.classList.remove('active-amaran', 'active-teguran', 'active-peringatan', 'active-disqualify');
+            btn.classList.remove('active-amaran', 'active-teguran', 'active-peringatan');
             if (state.penalties && state.penalties[color] && state.penalties[color][p.code]) {
               btn.classList.add(p.type);
             }
@@ -487,8 +486,15 @@
 
     function togglePenalty(color, code, pts) { socket.emit('togglePenalty', { color, code, pts }); }
 
-    // FUNGSI KHUSUS UNTUK POP-UP & EMIT DISQUALIFIED DIRECT KE TV (DIBERSIHKAN)
+    // FUNGSI KHUSUS DISKUALIFIKASI (DQ)
 function confirmDisqualification(color) {
+  const btnDQ = document.getElementById(`btn_${color}_DQ`);
+  
+  // 1. HIDUPKAN NYALAAN BUTANG SEBAIK SAHAJA DITEKAN
+  if (btnDQ) {
+    btnDQ.classList.add('active-disqualify');
+  }
+
   const colorText = (color === 'blue' || color === 'biru') ? 'SUDUT BIRU' : 'SUDUT MERAH';
   const winnerText = (color === 'blue' || color === 'biru') ? 'SUDUT MERAH' : 'SUDUT BIRU';
 
@@ -497,15 +503,31 @@ function confirmDisqualification(color) {
     `Adakah anda pasti untuk men-<b>DISKUALIFIKASI (DQ)</b> Pesilat <b>${colorText}</b>?<br><br>
      <span style="color: #2ecc71; font-weight: bold;">Pemenang: ${winnerText}</span><br>
      <small style="color: #e74c3c;">Nota: Teks pengumuman DQ akan dipaparkan secara langsung pada skrin TV!</small>`,
+    // JIKA TEKAN OK:
     function() {
       controlTimer('pause');
-      // Cukup sekadar menghantar disqualifiedAlert. 
-      // Server.js akan menguruskan state.penalties[color].DQ dan pemakluman ke skrin TV.
       socket.emit('disqualifiedAlert', color);
+      
+      // 2. PADAMKAN NYALAAN BUTANG SELEPAS TEKAN OK
+      if (btnDQ) {
+        btnDQ.classList.remove('active-disqualify');
+      }
     }
   );
-}
 
+  // JIKA TEKAN BATAL (CANCEL):
+  // Pastikan lampu butang juga dipadamkan jika pengadil membatalkan pilihan
+  const btnCancel = document.getElementById('btnConfirmCancel');
+  if (btnCancel) {
+    const originalCancelHandler = btnCancel.onclick;
+    btnCancel.onclick = function() {
+      if (btnDQ) {
+        btnDQ.classList.remove('active-disqualify');
+      }
+      document.getElementById('confirmModalOverlay').style.display = 'none';
+    };
+  }
+}
     // FUNGSI KHUSUS PENGESAHAN POP-UP MARKAH JATUHAN (+3 / -3)
     function confirmJatuhanScore(color, pts) {
       const colorText = (color === 'blue' || color === 'biru') ? 'SUDUT BIRU' : 'SUDUT MERAH';
