@@ -4,9 +4,7 @@ const { Server } = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: "*" }
-});
+const io = new Server(server);
 
 app.use(express.static(__dirname));
 
@@ -190,7 +188,6 @@ io.on('connection', (socket) => {
   // --- KAWALAN PEMASA (TIMER) ---
   socket.on('controlTimer', (action) => {
     if (action === 'start' && !state.timer.isRunning) {
-      clearInterval(timerInterval); // PENTING: Bersihkan interval sedia ada untuk elak double-speed bug
       state.timer.isRunning = true;
       addLog(`▶️ Pemasa Dimulakan (Round ${state.round})`);
       
@@ -214,17 +211,14 @@ io.on('connection', (socket) => {
   });
 
   socket.on('setTimerDuration', (seconds) => {
-    clearInterval(timerInterval);
-    state.timer.isRunning = false;
-    state.timer.duration = Number(seconds);
-    state.timer.currentTime = Number(seconds);
+    state.timer.duration = seconds;
+    state.timer.currentTime = seconds;
     addLog(`⏱️ Masa Disetkan ke ${seconds} saat`);
     io.emit('updateState', state);
   });
 
   // EVENT TUKAR PUSINGAN / SET ROUND
   socket.on('setRound', (roundNum) => {
-    clearInterval(timerInterval);
     // 1. Kemaskini nombor pusingan terkini
     state.round = roundNum;
 
