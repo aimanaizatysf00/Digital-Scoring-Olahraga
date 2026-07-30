@@ -154,7 +154,7 @@
         <button class="btn-penalty" id="btn_blue_T2" onclick="togglePenalty('blue', 'T2', -2)">✌🏻 Teguran 2 (-2)</button>
         <button class="btn-penalty" id="btn_blue_P1" onclick="togglePenalty('blue', 'P1', -5)">🙋🏻‍♂️ Peringatan 1 (-5)</button>
         <button class="btn-penalty" id="btn_blue_P2" onclick="togglePenalty('blue', 'P2', -10)">🙋🏻‍♂️🙋🏻‍♂️ Peringatan 2 (-10)</button>
-        <button class="btn-penalty btn-span-2" id="btn_blue_DQ" onclick="togglePenalty('blue', 'DQ', 0)">🚫 Diskualifikasi (DQ)</button>
+        <button class="btn-penalty btn-span-2" id="btn_blue_DQ" onclick="confirmDisqualification('blue')">🚫 Diskualifikasi (DQ)</button>
       </div>
 
       <h4>✏️ PELARASAN MARKAH MANUAL</h4>
@@ -195,7 +195,7 @@
         <button class="btn-penalty" id="btn_red_T2" onclick="togglePenalty('red', 'T2', -2)">✌🏻 Teguran 2 (-2)</button>
         <button class="btn-penalty" id="btn_red_P1" onclick="togglePenalty('red', 'P1', -5)">🙋🏻‍♂️ Peringatan 1 (-5)</button>
         <button class="btn-penalty" id="btn_red_P2" onclick="togglePenalty('red', 'P2', -10)">🙋🏻‍♂️🙋🏻‍♂️ Peringatan 2 (-10)</button>
-        <button class="btn-penalty btn-span-2" id="btn_red_DQ" onclick="togglePenalty('red', 'DQ', 0)">🚫 Diskualifikasi (DQ)</button>
+        <button class="btn-penalty btn-span-2" id="btn_red_DQ" onclick="confirmDisqualification('red')">🚫 Diskualifikasi (DQ)</button>
       </div>
 
       <h4>✏️ PELARASAN MARKAH MANUAL</h4>
@@ -465,9 +465,27 @@
     }
 
     function togglePenalty(color, code, pts) { socket.emit('togglePenalty', { color, code, pts }); }
+
+    // FUNCTION UNTUK POP-UP PENGESAHAN DQ
+    function confirmDisqualification(color) {
+      const colorText = color === 'blue' ? 'SUDUT BIRU' : 'SUDUT MERAH';
+      showInScreenConfirm(
+        '🚫 DISKUALIFIKASI (DQ)',
+        `Adakah anda pasti untuk men-<b>DISKUALIFIKASI (DQ)</b> Pesilat <b>${colorText}</b>?<br><br><small style="color: #e74c3c;">Tindakan ini akan menghentikan perlawanan dan memaparkan terus keputusan pada Skrin TV!</small>`,
+        function() {
+          // Hantar status penalti DQ ke pelayan
+          togglePenalty(color, 'DQ', 0);
+          // Hentikan masa (Pause)
+          controlTimer('pause');
+          // Isytihar pemenang ke skrin TV secara automatik
+          socket.emit('publishWinnerToTV');
+        }
+      );
+    }
+
     function modifyScore(color, pts) { socket.emit('modifyScore', { color, pts }); }
 
-    // SEMAKAN PENGESAHAN JURI (MENAMPILKAN HURUF BESAR UNTUK TEKS BENTUK & SUDUT)
+    // SEMAKAN PENGESAHAN JURI
     function requestVerification(type, color) {
       const typeUpper = type.toUpperCase();
       const colorUpper = color.toUpperCase() === 'BLUE' ? 'BIRU' : 'MERAH';
