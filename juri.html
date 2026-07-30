@@ -306,13 +306,8 @@
     function sendScore(color, points) {
       const juriId = document.getElementById('juriIdSelect').value;
       
-      // Jika markah ialah 3 (Jatuhan), cetuskan semakan Pengadil/Juri bukannya pressScore pantas
-      if (points === 3) {
-        socket.emit('requestVerification', { type: 'JATUHAN', color: color });
-      } else {
-        // Menggunakan event 'pressScore' & parameter 'points' yang sepadan dengan server.js
-        socket.emit('pressScore', { juriId, color, points });
-      }
+      // Menggunakan event 'pressScore' & parameter 'points' yang sepadan dengan server.js
+      socket.emit('pressScore', { juriId, color, points });
     }
 
     socket.on('promptVerification', (data) => {
