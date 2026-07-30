@@ -80,9 +80,9 @@
       background: rgba(0,0,0,0.95); color: white; z-index: 9999; 
       flex-direction: column; justify-content: center; align-items: center; border: 10px solid #f1c40f; 
     }
-    .overlay-title { font-size: 3vw; font-weight: 900; color: #f1c40f; }
+    .overlay-title { font-size: 3vw; font-weight: 900; color: #f1c40f; text-align: center; }
     .overlay-detail { font-size: 5vw; font-weight: bold; margin: 20px 0; text-align: center; }
-    .overlay-result { font-size: 4vw; font-weight: 900; padding: 15px 30px; border-radius: 15px; }
+    .overlay-result { font-size: 4vw; font-weight: 900; padding: 15px 30px; border-radius: 15px; text-align: center; }
     .result-sah { background: #2ecc71; color: white; }
     .result-xsah { background: #e74c3c; color: white; }
     .result-pending { background: #f39c12; color: black; }
@@ -168,6 +168,15 @@
       return `${m}:${s}`;
     }
 
+    function resetOverlayStyle() {
+      const tvTitleEl = document.getElementById('tvVerifyTitle');
+      const tvDetailEl = document.getElementById('tvVerifyDetail');
+      const tvResultEl = document.getElementById('tvVerifyResult');
+      tvTitleEl.removeAttribute('style');
+      tvDetailEl.removeAttribute('style');
+      tvResultEl.removeAttribute('style');
+    }
+
     socket.on('updateState', (state) => {
       if(!state) return;
 
@@ -202,6 +211,7 @@
           
           // POPUP MASA TAMAT: Hanya ditunjukkan jika masa 0 DAN tiada pengisytiharan pemenang aktif
           if (state.timer.currentTime === 0 && !state.winnerData) {
+            resetOverlayStyle(); // Bersihkan sebarang gaya diskualifikasi/pengesahan sebelum ini
             document.getElementById('tvVerifyTitle').innerText = "⏱️ PERHATIAN ⏱️";
             document.getElementById('tvVerifyDetail').innerText = "MASA TAMAT";
             document.getElementById('tvVerifyDetail').style.color = "#e74c3c";
@@ -277,6 +287,7 @@
 
     // SHOW WINNER
     socket.on('showWinnerOnTV', (data) => {
+      resetOverlayStyle();
       const overlay = document.getElementById('tvOverlay');
       const title = document.getElementById('tvVerifyTitle');
       const detail = document.getElementById('tvVerifyDetail');
@@ -304,6 +315,7 @@
 
     // PROMPT VERIFICATION
     socket.on('promptVerification', (data) => {
+      resetOverlayStyle();
       const typeUpper = (data.type || '').toUpperCase();
       let colorUpper = (data.color || '').toUpperCase();
       if (colorUpper === 'BLUE') colorUpper = 'BIRU';
@@ -336,50 +348,31 @@
 
     // DISQUALIFIED
     socket.on('disqualifiedAlert', (color) => {
+      resetOverlayStyle();
       const isBlue = color.toUpperCase() === 'BLUE' || color.toUpperCase() === 'BIRU';
       const sudutBatal = isBlue ? "SUDUT BIRU" : "SUDUT MERAH";
       const sudutMenang = isBlue ? "SUDUT MERAH" : "SUDUT BIRU";
 
-      // Tetapkan saiz tulisan seragam untuk semua (contoh: 26px & bold)
-      const fontSizePilihan = "26px";
-
-      // 1. Tajuk sudut yang dibatalkan mengikut warna sudut
       const tvTitleEl = document.getElementById('tvVerifyTitle');
+      const tvDetailEl = document.getElementById('tvVerifyDetail');
+      const verifyResultEl = document.getElementById('tvVerifyResult');
+
       tvTitleEl.innerText = sudutBatal;
       tvTitleEl.style.color = isBlue ? "#3498db" : "#e74c3c";
-      tvTitleEl.style.fontSize = fontSizePilihan;
-      tvTitleEl.style.fontWeight = "900";
 
-      // 2. Teks DISKUALIFIKASI warna kuning
-      const tvDetailEl = document.getElementById('tvVerifyDetail');
       tvDetailEl.innerText = "DISKUALIFIKASI";
       tvDetailEl.style.color = "#f1c40f";
-      tvDetailEl.style.fontSize = fontSizePilihan;
-      tvDetailEl.style.fontWeight = "900";
 
-      // 3. Teks pemenang dengan border & background kontra mengikut sudut pemenang
-      const verifyResultEl = document.getElementById('tvVerifyResult');
       verifyResultEl.innerText = "KEMENANGAN KEPADA " + sudutMenang;
       verifyResultEl.className = "overlay-result result-xsah";
-      verifyResultEl.style.fontSize = fontSizePilihan;
-      verifyResultEl.style.fontWeight = "900";
       
       if (isBlue) {
-        // Pemenang ialah SUDUT MERAH
-        verifyResultEl.style.color = "#ff4d4d";
-        verifyResultEl.style.border = "2px solid #ff4d4d";
-        verifyResultEl.style.backgroundColor = "rgba(231, 76, 60, 0.2)";
+        verifyResultEl.style.color = "#ffffff";
+        verifyResultEl.style.backgroundColor = "#d32f2f";
       } else {
-        // Pemenang ialah SUDUT BIRU
-        verifyResultEl.style.color = "#4dacff";
-        verifyResultEl.style.border = "2px solid #4dacff";
-        verifyResultEl.style.backgroundColor = "rgba(52, 152, 219, 0.2)";
+        verifyResultEl.style.color = "#ffffff";
+        verifyResultEl.style.backgroundColor = "#0080ff";
       }
-      
-      verifyResultEl.style.padding = "8px 15px";
-      verifyResultEl.style.borderRadius = "8px";
-      verifyResultEl.style.display = "inline-block";
-      verifyResultEl.style.marginTop = "10px";
 
       document.getElementById('tvOverlay').style.display = 'flex';
       setTimeout(() => { document.getElementById('tvOverlay').style.display = 'none'; }, 6000);
