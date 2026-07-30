@@ -311,7 +311,14 @@
     }
 
     socket.on('promptVerification', (data) => {
-      document.getElementById('verifyText').innerText = `${data.type} - SUDUT ${data.color.toUpperCase()}`;
+      // Tukar tajuk semakan ke HURUF BESAR SEPENUHNYA
+      const jenisUpper = String(data.type).toUpperCase();
+      
+      // Semak dan tukar warna BLUE/RED ke BAHASA MALAYSIA (SUDUT BIRU / SUDUT MERAH)
+      const colorVal = String(data.color).toUpperCase();
+      const labelSudut = (colorVal === 'BLUE' || colorVal === 'BIRU') ? 'SUDUT BIRU' : 'SUDUT MERAH';
+
+      document.getElementById('verifyText').innerText = `${jenisUpper} - ${labelSudut}`;
       document.getElementById('verifyOverlay').style.display = 'flex';
     });
 
