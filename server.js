@@ -70,7 +70,7 @@ function applyPenalties(color, penaltyType) {
 
   const type = penaltyType.toUpperCase();
 
-  if (type === 'PERINGATAN RINGAN') {
+  if (type === 'AMARAN') {
     if (!p.A1) {
       p.A1 = true; appliedCode = 'A1'; pointsDeducted = 0; // Amaran 1: 0 Mata
     } else if (!p.A2) {
@@ -376,7 +376,7 @@ io.on('connection', (socket) => {
             text: `JATUHAN SAH (+3 MATA)`
           });
 
-        } else if (['PERINGATAN RINGAN', 'TEGURAN', 'PERINGATAN'].includes(type)) {
+        } else if (['AMARAN', 'TEGURAN', 'PERINGATAN'].includes(type)) {
           // AUTOMATIK TUKAR HUKUMAN & POTONG MARKAH
           const penResult = applyPenalties(color, type);
 
