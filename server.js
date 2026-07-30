@@ -31,7 +31,7 @@ let state = {
     blue: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false },
     red: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false }
   },
-  // TAMBAHAN: Rekod statistik bilangan teknik bagi setiap sudut
+  // Rekod statistik bilangan teknik bagi setiap sudut
   stats: {
     blue: { pukulan: 0, tendangan: 0, jatuhan: 0 },
     red: { pukulan: 0, tendangan: 0, jatuhan: 0 }
@@ -195,25 +195,24 @@ io.on('connection', (socket) => {
   });
 
   // EVENT TUKAR PUSINGAN / SET ROUND
-socket.on('setRound', (roundNum) => {
-  // 1. Kemaskini nombor pusingan terkini
-  gameState.round = roundNum;
+  socket.on('setRound', (roundNum) => {
+    // 1. Kemaskini nombor pusingan terkini
+    state.round = roundNum;
 
-  // 2. RESET BUTANG HUKUMAN (Menjadikan semua status penalti false untuk pusingan baharu)
-  // Ini memadamkan lampu/warna pada butang tanpa mengganggu rekod markah terkumpul (gameState.score)
-  gameState.penalties = {
-    blue: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false },
-    red:  { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false }
-  };
+    // 2. RESET BUTANG HUKUMAN (Menjadikan semua status penalti false untuk pusingan baharu)
+    state.penalties = {
+      blue: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false },
+      red:  { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false }
+    };
 
-  // 3. Reset pemasa ke masa asal (contoh: 90 saat) & hentikan pemasa
-  gameState.timer.currentTime = gameState.timer.duration || 90;
-  gameState.timer.isRunning = false;
+    // 3. Reset pemasa ke masa asal (contoh: 90 saat) & hentikan pemasa
+    state.timer.currentTime = state.timer.duration || 90;
+    state.timer.isRunning = false;
 
-  // 4. Hantar data terkini ke fail HTML (Panel Pengadil & Skrin TV)
-  io.emit('updateState', gameState);
-  io.emit('newLog', `--- PUSINGAN ${roundNum} BERMULA ---`);
-});
+    // 4. Hantar data terkini ke fail HTML (Panel Pengadil & Skrin TV)
+    io.emit('updateState', state);
+    addLog(`--- PUSINGAN ${roundNum} BERMULA ---`);
+  });
 
   // --- KEMASKINI MAKLUMAT PESERTA / MATCH ---
   socket.on('updateMatchDetails', (data) => {
@@ -267,7 +266,7 @@ socket.on('setRound', (roundNum) => {
     if (uniqueJuriCount >= 2) {
       state.score[color] += points;
 
-      // TAMBAHAN: Rekod statistik pukulan (+1) atau tendangan (+2)
+      // Rekod statistik pukulan (+1) atau tendangan (+2)
       if (points === 1) state.stats[color].pukulan += 1;
       if (points === 2) state.stats[color].tendangan += 1;
 
@@ -338,7 +337,7 @@ socket.on('setRound', (roundNum) => {
           // AUTOMATIK +3 MATA JIKA JATUHAN SAH
           state.score[color] += 3;
 
-          // TAMBAHAN: Rekod statistik jatuhan (+3)
+          // Rekod statistik jatuhan (+3)
           state.stats[color].jatuhan += 1;
 
           addLog(`✅ Jatuhan SAH (+3 Mata [${color.toUpperCase()}])`);
@@ -415,7 +414,7 @@ socket.on('setRound', (roundNum) => {
       blue: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false },
       red: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false }
     };
-    // TAMBAHAN: Reset statistik kaunter teknik
+    // Reset statistik kaunter teknik
     state.stats = {
       blue: { pukulan: 0, tendangan: 0, jatuhan: 0 },
       red: { pukulan: 0, tendangan: 0, jatuhan: 0 }
@@ -428,5 +427,5 @@ socket.on('setRound', (roundNum) => {
   });
 });
 
-const PORT = 3000;
-server.listen(PORT, () => console.log(`Server Silat Berjalan di http://localhost:${PORT}`));
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`Server Silat Berjalan di port ${PORT}`));
