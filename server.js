@@ -31,6 +31,11 @@ let state = {
     blue: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false },
     red: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false }
   },
+  // TAMBAHAN: Rekod statistik bilangan teknik bagi setiap sudut
+  stats: {
+    blue: { pukulan: 0, tendangan: 0, jatuhan: 0 },
+    red: { pukulan: 0, tendangan: 0, jatuhan: 0 }
+  },
   winnerData: null
 };
 
@@ -101,32 +106,56 @@ function applyPenalties(color, penaltyType) {
 function calculateWinner() {
   const blueScore = state.score.blue;
   const redScore = state.score.red;
-  const blueDeductions = state.penaltyPoints.blue;
-  const redDeductions = state.penaltyPoints.red;
 
-  let winner = 'DRAW';
-  let reason = '';
-
+  // 1. Semakan Pertama: Jumlah Markah Bersih
   if (blueScore > redScore) {
-    winner = 'blue';
-    reason = 'Mata Akhir Tertinggi';
+    return { winner: 'blue', blueScore, redScore, reason: 'Mata Akhir Tertinggi' };
   } else if (redScore > blueScore) {
-    winner = 'red';
-    reason = 'Mata Akhir Tertinggi';
-  } else {
-    if (blueDeductions < redDeductions) {
-      winner = 'blue';
-      reason = `Markah Seri (${blueScore}-${redScore}), Menang Hukuman Lebih Sedikit`;
-    } else if (redDeductions < blueDeductions) {
-      winner = 'red';
-      reason = `Markah Seri (${blueScore}-${redScore}), Menang Hukuman Lebih Sedikit`;
-    } else {
-      winner = 'DRAW';
-      reason = `Markah & Hukuman Sama Seri`;
+    return { winner: 'red', blueScore, redScore, reason: 'Mata Akhir Tertinggi' };
+  }
+
+  // 2. Semakan Kedua (Jika Seri): Penolakan Hukuman dari Terberat (P2) ke Teringan (A1)
+  const bluePen = state.penalties.blue;
+  const redPen = state.penalties.red;
+  const penaltyCheckOrder = ['P2', 'P1', 'T2', 'T1', 'A2', 'A1'];
+
+  for (const code of penaltyCheckOrder) {
+    if (bluePen[code] !== redPen[code]) {
+      if (!bluePen[code] && redPen[code]) {
+        return { winner: 'blue', blueScore, redScore, reason: `Markah Seri, Menang Hukuman Lebih Sedikit (${code})` };
+      } else {
+        return { winner: 'red', blueScore, redScore, reason: `Markah Seri, Menang Hukuman Lebih Sedikit (${code})` };
+      }
     }
   }
 
-  return { winner, blueScore, redScore, reason };
+  // 3. Semakan Ketiga (Jika Markah & Hukuman Seri): Bilangan Teknik (Jatuhan -> Tendangan -> Pukulan)
+  const bStats = state.stats.blue;
+  const rStats = state.stats.red;
+
+  // i. Semak Jatuhan
+  if (bStats.jatuhan !== rStats.jatuhan) {
+    const winner = bStats.jatuhan > rStats.jatuhan ? 'blue' : 'red';
+    const count = winner === 'blue' ? bStats.jatuhan : rStats.jatuhan;
+    return { winner, blueScore, redScore, reason: `Markah & Hukuman Seri, Menang Jatuhan Terbanyak (${count})` };
+  }
+
+  // ii. Semak Tendangan
+  if (bStats.tendangan !== rStats.tendangan) {
+    const winner = bStats.tendangan > rStats.tendangan ? 'blue' : 'red';
+    const count = winner === 'blue' ? bStats.tendangan : rStats.tendangan;
+    return { winner, blueScore, redScore, reason: `Markah & Hukuman Seri, Menang Tendangan Terbanyak (${count})` };
+  }
+
+  // iii. Semak Pukulan
+  if (bStats.pukulan !== rStats.pukulan) {
+    const winner = bStats.pukulan > rStats.pukulan ? 'blue' : 'red';
+    const count = winner === 'blue' ? bStats.pukulan : rStats.pukulan;
+    return { winner, blueScore, redScore, reason: `Markah & Hukuman Seri, Menang Pukulan Terbanyak (${count})` };
+  }
+
+  // Jika Semua Elemen Sama Seri Keseluruhan
+  return { winner: 'DRAW', blueScore, redScore, reason: 'Markah, Hukuman & Semua Teknik Sama Seri' };
 }
 
 io.on('connection', (socket) => {
@@ -225,6 +254,11 @@ io.on('connection', (socket) => {
     // 6. SYARAT MAJORITI: Sekurang-kurangnya 2 JURI UNIK bersetuju
     if (uniqueJuriCount >= 2) {
       state.score[color] += points;
+
+      // TAMBAHAN: Rekod statistik pukulan (+1) atau tendangan (+2)
+      if (points === 1) state.stats[color].pukulan += 1;
+      if (points === 2) state.stats[color].tendangan += 1;
+
       addLog(`✅ MATA SAH! +${points} untuk SUDUT ${color.toUpperCase()} (${uniqueJuriCount} Juri bersetuju)`);
 
       // Bersihkan buffer bagi kategori warna & markah ini
@@ -291,6 +325,10 @@ io.on('connection', (socket) => {
         if (type === 'JATUHAN') {
           // AUTOMATIK +3 MATA JIKA JATUHAN SAH
           state.score[color] += 3;
+
+          // TAMBAHAN: Rekod statistik jatuhan (+3)
+          state.stats[color].jatuhan += 1;
+
           addLog(`✅ Jatuhan SAH (+3 Mata [${color.toUpperCase()}])`);
 
           io.emit('verificationResult', {
@@ -364,6 +402,11 @@ io.on('connection', (socket) => {
     state.penalties = {
       blue: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false },
       red: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false }
+    };
+    // TAMBAHAN: Reset statistik kaunter teknik
+    state.stats = {
+      blue: { pukulan: 0, tendangan: 0, jatuhan: 0 },
+      red: { pukulan: 0, tendangan: 0, jatuhan: 0 }
     };
     state.winnerData = null;
     currentVerification = null;
