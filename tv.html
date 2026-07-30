@@ -252,7 +252,17 @@
       const lampElement = document.getElementById(targetId);
 
       if (lampElement) {
-        let symbol = points === 1 ? '👊🏻' : (points === 2 ? '🦶🏻' : `+${points}`);
+        let symbol = '';
+        if (points === 1) {
+          symbol = '👊🏻';
+        } else if (points === 2) {
+          symbol = '🦶🏻';
+        } else if (points === 3) {
+          symbol = '🧎🏻';
+        } else {
+          symbol = `+${points}`;
+        }
+
         const originalText = `JURI ${juriId}`;
 
         lampElement.innerText = symbol;
