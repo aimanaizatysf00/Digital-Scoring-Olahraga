@@ -248,7 +248,7 @@
   <div id="confirmModalOverlay" class="custom-modal-overlay">
     <div class="custom-modal-box">
       <h3 id="confirmTitle" style="margin-top: 0; color: #f39c12;">❓ PENGESAHAN</h3>
-      <p id="confirmMessage" style="font-size: 1.05rem; margin: 15px 0; color: #ddd;"></p>
+      <div id="confirmMessage" style="font-size: 1.05rem; margin: 15px 0; color: #ddd;"></div>
       <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
         <button id="btnConfirmOk" class="btn btn-success" style="flex: 1;">OK</button>
         <button id="btnConfirmCancel" class="btn btn-danger" style="flex: 1;">BATAL</button>
@@ -261,7 +261,7 @@
     let currentLogs = [];
     let hasPoppedForRound = false;
 
-    // UTILITY: POP-UP IN-SCREEN (OK / CANCEL)
+    // UTILITY: POP-UP IN-SCREEN (OK / CANCEL) - TELAH DIBAIKI
     function showInScreenConfirm(title, message, onConfirm) {
       const overlay = document.getElementById('confirmModalOverlay');
       const titleElem = document.getElementById('confirmTitle');
@@ -270,7 +270,9 @@
       const btnCancel = document.getElementById('btnConfirmCancel');
 
       titleElem.innerText = title;
-      msgElem.innerText = message;
+      
+      // Menggunakan innerHTML menggantikan innerText supaya HTML tag diproses
+      msgElem.innerHTML = message;
 
       overlay.style.display = 'flex';
 
