@@ -52,6 +52,13 @@ let currentVerification = null;
 let pendingScores = []; 
 const VERIFICATION_WINDOW = 2000; // Sela masa 2.0 saat untuk pengesahan juri
 
+// FUNGSI BANTUAN UNTUK MENUKAR WARNA KEPADA BAHASA MELAYU
+function getColorMalay(color) {
+  if (!color) return '';
+  const c = String(color).toLowerCase();
+  return c === 'blue' ? 'BIRU' : c === 'red' ? 'MERAH' : c.toUpperCase();
+}
+
 function addLog(text) {
   const timestamp = new Date().toLocaleTimeString('ms-MY', { hour12: false });
   io.emit('newLog', `[${timestamp}] ${text}`);
@@ -258,7 +265,8 @@ io.on('connection', (socket) => {
     const points = Number(data.points);
     const now = Date.now();
 
-    addLog(`🔘 Juri ${juriId} tekan +${points} (${color.toUpperCase()})`);
+    const colorMalay = getColorMalay(color);
+    addLog(`🔘 Juri ${juriId} tekan +${points} (${colorMalay})`);
 
     // 1. Hantar signal visual lampu ke TV/Pengadil
     io.emit('juriPressSignal', { juriId, color, points });
@@ -293,7 +301,7 @@ io.on('connection', (socket) => {
       if (points === 1) state.stats[color].pukulan += 1;
       if (points === 2) state.stats[color].tendangan += 1;
 
-      addLog(`✅ MATA SAH! +${points} untuk SUDUT ${color.toUpperCase()} (${uniqueJuriCount} Juri bersetuju)`);
+      addLog(`✅ MATA SAH! +${points} untuk SUDUT ${colorMalay} (${uniqueJuriCount} Juri bersetuju)`);
 
       // Bersihkan buffer bagi kategori warna & markah ini
       pendingScores = pendingScores.filter(
@@ -309,19 +317,20 @@ io.on('connection', (socket) => {
     const isActive = state.penalties[color][code];
     state.penalties[color][code] = !isActive;
     const penaltyVal = Math.abs(pts);
+    const colorMalay = getColorMalay(color);
 
     if (!isActive) {
       state.score[color] += pts;
       state.penaltyPoints[color] += penaltyVal;
       state.totalPenalties[color][code] += 1; // Rekod terkumpul
-      addLog(`⚠️ Hukuman Diberi [${color.toUpperCase()}]: ${code} (${pts} mata)`);
+      addLog(`⚠️ Hukuman Diberi [SUDUT ${colorMalay}]: ${code} (${pts} mata)`);
     } else {
       state.score[color] -= pts;
       state.penaltyPoints[color] -= penaltyVal;
       if (state.totalPenalties[color][code] > 0) {
         state.totalPenalties[color][code] -= 1; // Batal rekod terkumpul
       }
-      addLog(`🔄 Hukuman Dibatalkan [${color.toUpperCase()}]: ${code}`);
+      addLog(`🔄 Hukuman Dibatalkan [SUDUT ${colorMalay}]: ${code}`);
     }
 
     if (state.penaltyPoints[color] < 0) state.penaltyPoints[color] = 0;
@@ -332,19 +341,30 @@ io.on('connection', (socket) => {
   // --- PELARASAN MARKAH MANUAL ---
   socket.on('modifyScore', ({ color, pts }) => {
     state.score[color] += pts;
-    addLog(`✏️ Markah Manual [${color.toUpperCase()}]: ${pts > 0 ? '+' : ''}${pts}`);
+    const colorMalay = getColorMalay(color);
+    addLog(`✏️ Markah Manual [SUDUT ${colorMalay}]: ${pts > 0 ? '+' : ''}${pts}`);
     io.emit('updateState', state);
   });
 
   // --- SEMAKAN UNDIAN JURI (VERIFICATION) & AUTOMASI MARKAH ---
   socket.on('requestVerification', (data) => {
+    const colorMalay = getColorMalay(data.color);
+
     currentVerification = {
       type: data.type,
-      color: data.color,
+      color: data.color,      // Kekal simpan key 'blue'/'red' untuk pengiraan logik
+      colorMalay: colorMalay, // Simpan teks 'BIRU'/'MERAH' untuk paparan UI
       votes: {}
     };
-    addLog(`🔍 Semakan Juri Dibuat: ${data.type} [${data.color.toUpperCase()}]`);
-    io.emit('promptVerification', data);
+
+    addLog(`🔍 Semakan Juri Dibuat: ${data.type} [SUDUT ${colorMalay}]`);
+
+    // Hantar data yang telah diubah ke Bahasa Melayu ke skrin Juri & TV
+    io.emit('promptVerification', {
+      type: data.type,
+      color: colorMalay,      // Dihantar sebagai 'BIRU' atau 'MERAH'
+      rawColor: data.color
+    });
   });
 
   socket.on('submitVerification', ({ juriId, approved }) => {
@@ -357,6 +377,7 @@ io.on('connection', (socket) => {
       const yesVotes = Object.values(currentVerification.votes).filter(v => v === true).length;
       const isAccepted = yesVotes >= 2;
       const color = currentVerification.color;
+      const colorMalay = currentVerification.colorMalay || getColorMalay(color);
       const type = currentVerification.type.toUpperCase();
 
       if (isAccepted) {
@@ -367,11 +388,11 @@ io.on('connection', (socket) => {
           // Rekod statistik jatuhan (+3)
           state.stats[color].jatuhan += 1;
 
-          addLog(`✅ Jatuhan SAH (+3 Mata [${color.toUpperCase()}])`);
+          addLog(`✅ Jatuhan SAH (+3 Mata [SUDUT ${colorMalay}])`);
 
           io.emit('verificationResult', {
             type: currentVerification.type,
-            color: color,
+            color: colorMalay,
             isApproved: true,
             text: `JATUHAN SAH (+3 MATA)`
           });
@@ -381,14 +402,14 @@ io.on('connection', (socket) => {
           const penResult = applyPenalties(color, type);
 
           if (penResult.isDisqualified) {
-            addLog(`❌ DISQUALIFIED: Sudut ${color.toUpperCase()} Dibatalkan (DQ)`);
+            addLog(`❌ DISQUALIFIED: Sudut ${colorMalay} Dibatalkan (DQ)`);
             io.emit('disqualifiedAlert', color);
           } else {
-            addLog(`⚠️ ${type} SAH (${penResult.appliedCode}): -${penResult.pointsDeducted} Mata [${color.toUpperCase()}]`);
+            addLog(`⚠️ ${type} SAH (${penResult.appliedCode}): -${penResult.pointsDeducted} Mata [SUDUT ${colorMalay}]`);
             
             io.emit('verificationResult', {
               type: currentVerification.type,
-              color: color,
+              color: colorMalay,
               isApproved: true,
               text: `${type} SAH (${penResult.appliedCode}) -${penResult.pointsDeducted} MATA`
             });
@@ -396,16 +417,16 @@ io.on('connection', (socket) => {
         } else {
           io.emit('verificationResult', {
             type: currentVerification.type,
-            color: color,
+            color: colorMalay,
             isApproved: true,
             text: `${currentVerification.type} - SAH (${yesVotes}/3)`
           });
         }
       } else {
-        addLog(`❌ Semakan ${type} TIDAK SAH [${color.toUpperCase()}]`);
+        addLog(`❌ Semakan ${type} TIDAK SAH [SUDUT ${colorMalay}]`);
         io.emit('verificationResult', {
           type: currentVerification.type,
-          color: color,
+          color: colorMalay,
           isApproved: false,
           text: `${currentVerification.type} - TIDAK SAH (${3 - yesVotes}/3)`
         });
@@ -420,13 +441,15 @@ io.on('connection', (socket) => {
   socket.on('publishWinnerToTV', () => {
     const result = calculateWinner();
     state.winnerData = result;
-    addLog(`🏆 PEMENANG DIISYTIHARKAN: ${result.winner.toUpperCase()} (${result.reason})`);
+    const winnerName = result.winner === 'blue' ? 'BIRU' : result.winner === 'red' ? 'MERAH' : 'SERI';
+    addLog(`🏆 PEMENANG DIISYTIHARKAN: SUDUT ${winnerName} (${result.reason})`);
     io.emit('updateState', state);
     io.emit('showWinnerOnTV', result);
   });
 
   socket.on('disqualify', (color) => {
-    addLog(`❌ DISQUALIFIED: Sudut ${color.toUpperCase()} Dibatalkan`);
+    const colorMalay = getColorMalay(color);
+    addLog(`❌ DISQUALIFIED: Sudut ${colorMalay} Dibatalkan`);
     io.emit('disqualifiedAlert', color);
   });
 
