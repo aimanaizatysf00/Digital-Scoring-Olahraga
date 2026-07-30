@@ -48,6 +48,8 @@
     .btn-penalty.active-amaran { background: #f1c40f !important; color: #000 !important; }
     .btn-penalty.active-teguran { background: #e67e22 !important; color: #fff !important; }
     .btn-penalty.active-peringatan { background: #c0392b !important; color: #fff !important; }
+    .btn-penalty.active-disqualify { background: #8e44ad !important; color: #fff !important; border-color: #9b59b6; }
+    .btn-span-2 { grid-column: span 2; }
 
     .manual-score-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin-top: 5px; }
     .btn-sm { padding: 8px 0; font-size: 0.85rem; font-weight: bold; }
@@ -152,6 +154,7 @@
         <button class="btn-penalty" id="btn_blue_T2" onclick="togglePenalty('blue', 'T2', -2)">✌🏻 Teguran 2 (-2)</button>
         <button class="btn-penalty" id="btn_blue_P1" onclick="togglePenalty('blue', 'P1', -5)">🙋🏻‍♂️ Peringatan 1 (-5)</button>
         <button class="btn-penalty" id="btn_blue_P2" onclick="togglePenalty('blue', 'P2', -10)">🙋🏻‍♂️🙋🏻‍♂️ Peringatan 2 (-10)</button>
+        <button class="btn-penalty btn-span-2" id="btn_blue_DQ" onclick="togglePenalty('blue', 'DQ', 0)">🚫 Diskualifikasi (DQ)</button>
       </div>
 
       <h4>✏️ PELARASAN MARKAH MANUAL</h4>
@@ -192,6 +195,7 @@
         <button class="btn-penalty" id="btn_red_T2" onclick="togglePenalty('red', 'T2', -2)">✌🏻 Teguran 2 (-2)</button>
         <button class="btn-penalty" id="btn_red_P1" onclick="togglePenalty('red', 'P1', -5)">🙋🏻‍♂️ Peringatan 1 (-5)</button>
         <button class="btn-penalty" id="btn_red_P2" onclick="togglePenalty('red', 'P2', -10)">🙋🏻‍♂️🙋🏻‍♂️ Peringatan 2 (-10)</button>
+        <button class="btn-penalty btn-span-2" id="btn_red_DQ" onclick="togglePenalty('red', 'DQ', 0)">🚫 Diskualifikasi (DQ)</button>
       </div>
 
       <h4>✏️ PELARASAN MARKAH MANUAL</h4>
@@ -343,14 +347,15 @@
         { code: 'T1', type: 'active-teguran' },
         { code: 'T2', type: 'active-teguran' },
         { code: 'P1', type: 'active-peringatan' },
-        { code: 'P2', type: 'active-peringatan' }
+        { code: 'P2', type: 'active-peringatan' },
+        { code: 'DQ', type: 'active-disqualify' }
       ];
 
       ['blue', 'red'].forEach(color => {
         penConfig.forEach(p => {
           const btn = document.getElementById(`btn_${color}_${p.code}`);
           if (btn) {
-            btn.classList.remove('active-amaran', 'active-teguran', 'active-peringatan');
+            btn.classList.remove('active-amaran', 'active-teguran', 'active-peringatan', 'active-disqualify');
             if (state.penalties && state.penalties[color] && state.penalties[color][p.code]) {
               btn.classList.add(p.type);
             }
