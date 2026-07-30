@@ -322,11 +322,21 @@
 
     // DISQUALIFIED
     socket.on('disqualifiedAlert', (color) => {
-      document.getElementById('tvVerifyTitle').innerText = "❌ DISQUALIFIED / BATAL ❌";
-      document.getElementById('tvVerifyDetail').innerText = "SUDUT " + color.toUpperCase() + " DIBATALKAN!";
+      const cUpper = String(color).toUpperCase();
+      const isBlue = (cUpper === 'BLUE' || cUpper === 'BIRU');
+
+      // Tentukan sudut yang dibatalkan dan sudut yang menang
+      const sudutBatal = isBlue ? "SUDUT BIRU" : "SUDUT MERAH";
+      const sudutMenang = isBlue ? "SUDUT MERAH" : "SUDUT BIRU";
+
+      // Tukar paparan overlay TV
+      document.getElementById('tvVerifyTitle').innerText = sudutBatal;
+      document.getElementById('tvVerifyDetail').innerText = "DISKUALIFIKASI";
       document.getElementById('tvVerifyDetail').style.color = "#e74c3c";
-      document.getElementById('tvVerifyResult').innerText = "PESILAT BATAL";
+      
+      document.getElementById('tvVerifyResult').innerText = "KEMENANGAN KEPADA " + sudutMenang;
       document.getElementById('tvVerifyResult').className = "overlay-result result-xsah";
+      
       document.getElementById('tvOverlay').style.display = 'flex';
       setTimeout(() => { document.getElementById('tvOverlay').style.display = 'none'; }, 6000);
     });
