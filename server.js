@@ -27,9 +27,15 @@ let state = {
   },
   score: { blue: 0, red: 0 },
   penaltyPoints: { blue: 0, red: 0 },
+  // Status paparan hukuman bagi pusingan semasa sahaja
   penalties: {
     blue: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false },
     red: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false }
+  },
+  // Rekod akumulasi/terkumpul hukuman dari Round 1 hingga pusingan akhir
+  totalPenalties: {
+    blue: { A1: 0, A2: 0, T1: 0, T2: 0, P1: 0, P2: 0 },
+    red: { A1: 0, A2: 0, T1: 0, T2: 0, P1: 0, P2: 0 }
   },
   // Rekod statistik bilangan teknik bagi setiap sudut
   stats: {
@@ -94,6 +100,11 @@ function applyPenalties(color, penaltyType) {
     }
   }
 
+  // Rekodkan ke dalam fail terkumpul (totalPenalties)
+  if (appliedCode && appliedCode !== 'DQ') {
+    state.totalPenalties[color][appliedCode] += 1;
+  }
+
   // Tolak markah daripada skor sudut (Markah Boleh Negatif)
   if (pointsDeducted > 0) {
     state.score[color] -= pointsDeducted;
@@ -103,59 +114,71 @@ function applyPenalties(color, penaltyType) {
   return { appliedCode, pointsDeducted, isDisqualified };
 }
 
+// LOGIK KIRAAN PEMENANG TERBAHARU
 function calculateWinner() {
   const blueScore = state.score.blue;
   const redScore = state.score.red;
 
-  // 1. Semakan Pertama: Jumlah Markah Bersih
+  // 1. SEMAKAN PERTAMA: TOTAL MARKAH AKHIR (MATA TERSEDIA)
   if (blueScore > redScore) {
-    return { winner: 'blue', blueScore, redScore, reason: 'Mata Akhir Tertinggi' };
-  } else if (redScore > blueScore) {
-    return { winner: 'red', blueScore, redScore, reason: 'Mata Akhir Tertinggi' };
+    return { winner: 'blue', blueScore, redScore, reason: `Mata Akhir Tertinggi (${blueScore} - ${redScore})` };
+  }
+  if (redScore > blueScore) {
+    return { winner: 'red', blueScore, redScore, reason: `Mata Akhir Tertinggi (${redScore} - ${blueScore})` };
   }
 
-  // 2. Semakan Kedua (Jika Seri): Penolakan Hukuman dari Terberat (P2) ke Teringan (A1)
-  const bluePen = state.penalties.blue;
-  const redPen = state.penalties.red;
-  const penaltyCheckOrder = ['P2', 'P1', 'T2', 'T1', 'A2', 'A1'];
+  // 2. SEMAKAN KEDUA (JIKA MARKAH SERI): BEBAN PENALTI TERKUMPUL (ROUND 1 HINGGA 3)
+  const calculatePenaltyWeight = (color) => {
+    const tp = state.totalPenalties[color] || {};
+    let weight = 0;
+    // Pemberat nilai berat hukuman (P2 paling berat, A1 paling ringan)
+    weight += (tp.P2 || 0) * 10;
+    weight += (tp.P1 || 0) * 5;
+    weight += (tp.T2 || 0) * 2;
+    weight += (tp.T1 || 0) * 1;
+    weight += (tp.A2 || 0) * 0.5;
+    weight += (tp.A1 || 0) * 0.1;
+    return weight;
+  };
 
-  for (const code of penaltyCheckOrder) {
-    if (bluePen[code] !== redPen[code]) {
-      if (!bluePen[code] && redPen[code]) {
-        return { winner: 'blue', blueScore, redScore, reason: `Markah Seri, Menang Hukuman Lebih Sedikit (${code})` };
-      } else {
-        return { winner: 'red', blueScore, redScore, reason: `Markah Seri, Menang Hukuman Lebih Sedikit (${code})` };
-      }
-    }
+  const bluePenaltyWeight = calculatePenaltyWeight('blue');
+  const redPenaltyWeight = calculatePenaltyWeight('red');
+
+  // Siapa yang beban penalti LEBIH KECIL (penalti/hukuman lebih sedikit) MENANG
+  if (bluePenaltyWeight < redPenaltyWeight) {
+    return { winner: 'blue', blueScore, redScore, reason: 'Markah Seri - Menang Hukuman/Penalti Lebih Sedikit' };
+  } 
+  if (redPenaltyWeight < bluePenaltyWeight) {
+    return { winner: 'red', blueScore, redScore, reason: 'Markah Seri - Menang Hukuman/Penalti Lebih Sedikit' };
   }
 
-  // 3. Semakan Ketiga (Jika Markah & Hukuman Seri): Bilangan Teknik (Jatuhan -> Tendangan -> Pukulan)
+  // 3. SEMAKAN KETIGA (JIKA MARKAH & HUKUMAN JUGA SERI): TEKNIK (Jatuhan -> Tendangan -> Pukulan)
   const bStats = state.stats.blue;
   const rStats = state.stats.red;
 
-  // i. Semak Jatuhan
+  // i. Semak Jatuhan Terbanyak
   if (bStats.jatuhan !== rStats.jatuhan) {
     const winner = bStats.jatuhan > rStats.jatuhan ? 'blue' : 'red';
     const count = winner === 'blue' ? bStats.jatuhan : rStats.jatuhan;
-    return { winner, blueScore, redScore, reason: `Markah & Hukuman Seri, Menang Jatuhan Terbanyak (${count})` };
+    return { winner, blueScore, redScore, reason: `Markah & Penalti Seri - Menang Jatuhan Terbanyak (${count})` };
   }
 
-  // ii. Semak Tendangan
+  // ii. Semak Tendangan Terbanyak
   if (bStats.tendangan !== rStats.tendangan) {
     const winner = bStats.tendangan > rStats.tendangan ? 'blue' : 'red';
     const count = winner === 'blue' ? bStats.tendangan : rStats.tendangan;
-    return { winner, blueScore, redScore, reason: `Markah & Hukuman Seri, Menang Tendangan Terbanyak (${count})` };
+    return { winner, blueScore, redScore, reason: `Markah & Penalti Seri - Menang Tendangan Terbanyak (${count})` };
   }
 
-  // iii. Semak Pukulan
+  // iii. Semak Pukulan Terbanyak
   if (bStats.pukulan !== rStats.pukulan) {
     const winner = bStats.pukulan > rStats.pukulan ? 'blue' : 'red';
     const count = winner === 'blue' ? bStats.pukulan : rStats.pukulan;
-    return { winner, blueScore, redScore, reason: `Markah & Hukuman Seri, Menang Pukulan Terbanyak (${count})` };
+    return { winner, blueScore, redScore, reason: `Markah & Penalti Seri - Menang Pukulan Terbanyak (${count})` };
   }
 
-  // Jika Semua Elemen Sama Seri Keseluruhan
-  return { winner: 'DRAW', blueScore, redScore, reason: 'Markah, Hukuman & Semua Teknik Sama Seri' };
+  // 4. JIKA SEMUA PERKARA SAMA & SERI SEPENUHNYA
+  return { winner: 'DRAW', blueScore, redScore, reason: 'Markah, Hukuman & Semua Statistik Teknik Seri' };
 }
 
 io.on('connection', (socket) => {
@@ -199,17 +222,17 @@ io.on('connection', (socket) => {
     // 1. Kemaskini nombor pusingan terkini
     state.round = roundNum;
 
-    // 2. RESET BUTANG HUKUMAN (Menjadikan semua status penalti false untuk pusingan baharu)
+    // 2. RESET BUTANG PAPARAN HUKUMAN PUSINGAN SAHAJA (Data totalPenalties kekal tersimpan)
     state.penalties = {
       blue: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false },
       red:  { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false }
     };
 
-    // 3. Reset pemasa ke masa asal (contoh: 90 saat) & hentikan pemasa
+    // 3. Reset pemasa ke masa asal & hentikan pemasa
     state.timer.currentTime = state.timer.duration || 90;
     state.timer.isRunning = false;
 
-    // 4. Hantar data terkini ke fail HTML (Panel Pengadil & Skrin TV)
+    // 4. Hantar data terkini ke fail HTML
     io.emit('updateState', state);
     addLog(`--- PUSINGAN ${roundNum} BERMULA ---`);
   });
@@ -228,7 +251,7 @@ io.on('connection', (socket) => {
     io.emit('updateState', state);
   });
 
-  // --- LOGIK MAJORITI JURI (TERSUKAT & DIPATUHI) ---
+  // --- LOGIK MAJORITI JURI ---
   socket.on('pressScore', (data) => {
     const juriId = Number(data.juriId);
     const color = String(data.color).toLowerCase();
@@ -243,7 +266,7 @@ io.on('connection', (socket) => {
     // 2. Tapis rekod butang yang telah melepasi tempoh masa 2 saat
     pendingScores = pendingScores.filter(item => (now - item.timestamp) <= VERIFICATION_WINDOW);
 
-    // 3. Semak jika juri yang SAMA menekan butang yang SAMA dalam tetingkap masa ini
+    // 3. Semak jika juri yang SAMA menekan butang yang SAMA
     const existingIndex = pendingScores.findIndex(
       item => item.juriId === juriId && item.color === color && item.points === points
     );
@@ -259,7 +282,7 @@ io.on('connection', (socket) => {
       item => item.color === color && item.points === points
     );
 
-    // 5. Hitung bilangan juri UNIK (Juri 1, Juri 2, Juri 3)
+    // 5. Hitung bilangan juri UNIK
     const uniqueJuriCount = new Set(matchingPresses.map(item => item.juriId)).size;
 
     // 6. SYARAT MAJORITI: Sekurang-kurangnya 2 JURI UNIK bersetuju
@@ -290,10 +313,14 @@ io.on('connection', (socket) => {
     if (!isActive) {
       state.score[color] += pts;
       state.penaltyPoints[color] += penaltyVal;
+      state.totalPenalties[color][code] += 1; // Rekod terkumpul
       addLog(`⚠️ Hukuman Diberi [${color.toUpperCase()}]: ${code} (${pts} mata)`);
     } else {
       state.score[color] -= pts;
       state.penaltyPoints[color] -= penaltyVal;
+      if (state.totalPenalties[color][code] > 0) {
+        state.totalPenalties[color][code] -= 1; // Batal rekod terkumpul
+      }
       addLog(`🔄 Hukuman Dibatalkan [${color.toUpperCase()}]: ${code}`);
     }
 
@@ -413,6 +440,10 @@ io.on('connection', (socket) => {
     state.penalties = {
       blue: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false },
       red: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false }
+    };
+    state.totalPenalties = {
+      blue: { A1: 0, A2: 0, T1: 0, T2: 0, P1: 0, P2: 0 },
+      red: { A1: 0, A2: 0, T1: 0, T2: 0, P1: 0, P2: 0 }
     };
     // Reset statistik kaunter teknik
     state.stats = {
