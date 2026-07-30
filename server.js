@@ -194,14 +194,26 @@ io.on('connection', (socket) => {
     io.emit('updateState', state);
   });
 
-  socket.on('setRound', (r) => {
-    state.round = r;
-    state.timer.currentTime = state.timer.duration;
-    state.timer.isRunning = false;
-    clearInterval(timerInterval);
-    addLog(`🔄 Pusingan Ditukar ke Round ${r}`);
-    io.emit('updateState', state);
-  });
+  // EVENT TUKAR PUSINGAN / SET ROUND
+socket.on('setRound', (roundNum) => {
+  // 1. Kemaskini nombor pusingan terkini
+  gameState.round = roundNum;
+
+  // 2. RESET BUTANG HUKUMAN (Menjadikan semua status penalti false untuk pusingan baharu)
+  // Ini memadamkan lampu/warna pada butang tanpa mengganggu rekod markah terkumpul (gameState.score)
+  gameState.penalties = {
+    blue: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false },
+    red:  { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false }
+  };
+
+  // 3. Reset pemasa ke masa asal (contoh: 90 saat) & hentikan pemasa
+  gameState.timer.currentTime = gameState.timer.duration || 90;
+  gameState.timer.isRunning = false;
+
+  // 4. Hantar data terkini ke fail HTML (Panel Pengadil & Skrin TV)
+  io.emit('updateState', gameState);
+  io.emit('newLog', `--- PUSINGAN ${roundNum} BERMULA ---`);
+});
 
   // --- KEMASKINI MAKLUMAT PESERTA / MATCH ---
   socket.on('updateMatchDetails', (data) => {
