@@ -265,6 +265,7 @@
     let currentLogs = [];
     let hasPoppedForRound = false;
 
+    // Hantar maklumat asal secara automatik apabila socket mula bersambung
     socket.on('connect', () => {
       updateMatchDetails();
     });
@@ -314,7 +315,7 @@
       document.getElementById('blueScore').innerText = state.score.blue;
       document.getElementById('redScore').innerText = state.score.red;
 
-      // Highlight round
+      // Highlight butang Round yang sedang aktif
       [1, 2, 3].forEach(r => {
         const btnRound = document.getElementById(`btn_round_${r}`);
         if (btnRound) {
@@ -326,7 +327,7 @@
         }
       });
 
-      // Kemaskini maklumat borang
+      // Kemaskini borang maklumat jika disinkronkan dari server
       if (state.matchDetails) {
         if (state.matchDetails.className) document.getElementById('className').value = state.matchDetails.className;
         if (state.matchDetails.matchNo) document.getElementById('matchNo').value = state.matchDetails.matchNo;
@@ -358,7 +359,7 @@
         });
       });
 
-      // Semak bila masa = 00:00
+      // SEMAK BILA MASA = 00:00 UNTUK POP-UP
       if (state.timer.currentTime === 0 && !state.timer.isRunning && !hasPoppedForRound) {
         hasPoppedForRound = true;
         showRoundEndModal(state);
@@ -366,15 +367,16 @@
     });
 
     socket.on('newLog', (logText) => {
-      currentLogs.push(logText);
+      currentLogs.push(logText); // Simpan mengikut kronologi masa
       const logList = document.getElementById('logList');
       if (logList) {
         const p = document.createElement('p');
         p.innerText = logText;
-        logList.insertBefore(p, logList.firstChild);
+        logList.insertBefore(p, logList.firstChild); // Papar paling baru di atas
       }
     });
 
+    // RECEIVE WINNER RESULT FROM SERVER
     socket.on('showWinnerOnTV', (result) => {
       let winText = "";
       if (result.winner === 'blue') {
@@ -388,6 +390,7 @@
       showInScreenConfirm('🏆 KEPUTUSAN PEMENANG', winText, null);
     });
 
+    // FUNGSI POP-UP MODAL
     function showRoundEndModal(state) {
       const overlay = document.getElementById('pengadilOverlay');
       const popTitle = document.getElementById('popTitle');
@@ -443,9 +446,13 @@
       document.getElementById('pengadilOverlay').style.display = 'none';
     }
 
+    // ACTIONS
     function controlTimer(action) { socket.emit('controlTimer', action); }
     function setTimerDuration(seconds) { socket.emit('setTimerDuration', seconds); }
-    function setRound(roundNum) { socket.emit('setRound', roundNum); }
+    
+    function setRound(roundNum) { 
+      socket.emit('setRound', roundNum); 
+    }
 
     function updateMatchDetails() {
       const data = {
@@ -462,14 +469,12 @@
     function togglePenalty(color, code, pts) { socket.emit('togglePenalty', { color, code, pts }); }
     function modifyScore(color, pts) { socket.emit('modifyScore', { color, pts }); }
 
-    // SEMAKAN PENGESAHAN JURI (MENAMPILKAN HURUF BESAR UNTUK TEKS BENTUK & SUDUT)
+    // SEMAKAN PENGESAHAN JURI (POP-UP IN-SCREEN METADATA SAMAN TEKS)
     function requestVerification(type, color) {
-      const typeUpper = type.toUpperCase();
-      const colorUpper = color.toUpperCase() === 'BLUE' ? 'BIRU' : 'MERAH';
-
+      const colorName = color.toUpperCase() === 'BLUE' ? 'BIRU' : 'MERAH';
       showInScreenConfirm(
         '🔍 SEMAKAN JURI',
-        `Minta pengesahan <b>${typeUpper}</b> bagi Sudut <b>${colorUpper}</b>?`,
+        `Minta pengesahan <b>${type}</b> bagi Sudut <b>${colorName}</b>?`,
         function() {
           socket.emit('requestVerification', { type, color });
         }
@@ -489,6 +494,7 @@
       document.body.removeChild(a);
     }
 
+    // PENGISYTIHARAN PEMENANG (POP-UP IN-SCREEN)
     function publishWinner() {
       showInScreenConfirm(
         '🏆 ISYTIHAR PEMENANG',
@@ -499,6 +505,7 @@
       );
     }
 
+    // RESET KESELURUHAN (POP-UP IN-SCREEN)
     function resetAll() {
       showInScreenConfirm(
         '⚠️ RESET KESELURUHAN',
