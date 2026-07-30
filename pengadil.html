@@ -172,10 +172,10 @@
 
       <h4 style="margin-top: 15px;">🔍 SEMAKAN PENGESAHAN JURI</h4>
       <div class="verify-grid">
-        <button class="btn btn-warning btn-sm" onclick="requestVerification('JATUHAN', 'blue')">Jatuhan</button>
-        <button class="btn btn-warning btn-sm" onclick="requestVerification('AMARAN', 'blue')">Amaran</button>
-        <button class="btn btn-warning btn-sm" onclick="requestVerification('TEGURAN', 'blue')">Teguran</button>
-        <button class="btn btn-warning btn-sm" onclick="requestVerification('PERINGATAN', 'blue')">Peringatan</button>
+        <button class="btn btn-warning btn-sm" onclick="requestVerification('Jatuhan', 'blue')">Jatuhan</button>
+        <button class="btn btn-warning btn-sm" onclick="requestVerification('Pelanggaran Ringan', 'blue')">Pelanggaran Ringan</button>
+        <button class="btn btn-warning btn-sm" onclick="requestVerification('Pelanggaran Sederhana', 'blue')">Pelanggaran Sederhana</button>
+        <button class="btn btn-warning btn-sm" onclick="requestVerification('Pelanggaran Berat', 'blue')">Pelanggaran Berat</button>
       </div>
     </div>
 
@@ -212,10 +212,10 @@
 
       <h4 style="margin-top: 15px;">🔍 SEMAKAN PENGESAHAN JURI</h4>
       <div class="verify-grid">
-        <button class="btn btn-warning btn-sm" onclick="requestVerification('JATUHAN', 'red')">Jatuhan</button>
-        <button class="btn btn-warning btn-sm" onclick="requestVerification('AMARAN', 'red')">Amaran</button>
-        <button class="btn btn-warning btn-sm" onclick="requestVerification('TEGURAN', 'red')">Teguran</button>
-        <button class="btn btn-warning btn-sm" onclick="requestVerification('PERINGATAN', 'red')">Peringatan</button>
+        <button class="btn btn-warning btn-sm" onclick="requestVerification('Jatuhan', 'red')">Jatuhan</button>
+        <button class="btn btn-warning btn-sm" onclick="requestVerification('Pelanggaran Ringan', 'red')">Pelanggaran Ringan</button>
+        <button class="btn btn-warning btn-sm" onclick="requestVerification('Pelanggaran Sederhana', 'red')">Pelanggaran Sederhana</button>
+        <button class="btn btn-warning btn-sm" onclick="requestVerification('Pelanggaran Berat', 'red')">Pelanggaran Berat</button>
       </div>
     </div>
   </div>
@@ -265,7 +265,6 @@
     let currentLogs = [];
     let hasPoppedForRound = false;
 
-    // Hantar maklumat asal secara automatik apabila socket mula bersambung
     socket.on('connect', () => {
       updateMatchDetails();
     });
@@ -315,7 +314,7 @@
       document.getElementById('blueScore').innerText = state.score.blue;
       document.getElementById('redScore').innerText = state.score.red;
 
-      // Highlight butang Round yang sedang aktif
+      // Highlight round
       [1, 2, 3].forEach(r => {
         const btnRound = document.getElementById(`btn_round_${r}`);
         if (btnRound) {
@@ -327,7 +326,7 @@
         }
       });
 
-      // Kemaskini borang maklumat jika disinkronkan dari server
+      // Kemaskini maklumat borang
       if (state.matchDetails) {
         if (state.matchDetails.className) document.getElementById('className').value = state.matchDetails.className;
         if (state.matchDetails.matchNo) document.getElementById('matchNo').value = state.matchDetails.matchNo;
@@ -359,7 +358,7 @@
         });
       });
 
-      // SEMAK BILA MASA = 00:00 UNTUK POP-UP
+      // Semak bila masa = 00:00
       if (state.timer.currentTime === 0 && !state.timer.isRunning && !hasPoppedForRound) {
         hasPoppedForRound = true;
         showRoundEndModal(state);
@@ -367,16 +366,15 @@
     });
 
     socket.on('newLog', (logText) => {
-      currentLogs.push(logText); // Simpan mengikut kronologi masa
+      currentLogs.push(logText);
       const logList = document.getElementById('logList');
       if (logList) {
         const p = document.createElement('p');
         p.innerText = logText;
-        logList.insertBefore(p, logList.firstChild); // Papar paling baru di atas
+        logList.insertBefore(p, logList.firstChild);
       }
     });
 
-    // RECEIVE WINNER RESULT FROM SERVER
     socket.on('showWinnerOnTV', (result) => {
       let winText = "";
       if (result.winner === 'blue') {
@@ -390,7 +388,6 @@
       showInScreenConfirm('🏆 KEPUTUSAN PEMENANG', winText, null);
     });
 
-    // FUNGSI POP-UP MODAL
     function showRoundEndModal(state) {
       const overlay = document.getElementById('pengadilOverlay');
       const popTitle = document.getElementById('popTitle');
@@ -446,13 +443,9 @@
       document.getElementById('pengadilOverlay').style.display = 'none';
     }
 
-    // ACTIONS
     function controlTimer(action) { socket.emit('controlTimer', action); }
     function setTimerDuration(seconds) { socket.emit('setTimerDuration', seconds); }
-    
-    function setRound(roundNum) { 
-      socket.emit('setRound', roundNum); 
-    }
+    function setRound(roundNum) { socket.emit('setRound', roundNum); }
 
     function updateMatchDetails() {
       const data = {
@@ -469,12 +462,14 @@
     function togglePenalty(color, code, pts) { socket.emit('togglePenalty', { color, code, pts }); }
     function modifyScore(color, pts) { socket.emit('modifyScore', { color, pts }); }
 
-    // SEMAKAN PENGESAHAN JURI (POP-UP IN-SCREEN)
+    // SEMAKAN PENGESAHAN JURI (MENAMPILKAN HURUF BESAR UNTUK TEKS BENTUK & SUDUT)
     function requestVerification(type, color) {
-      const colorName = color.toUpperCase() === 'BLUE' ? 'BIRU' : 'MERAH';
+      const typeUpper = type.toUpperCase();
+      const colorUpper = color.toUpperCase() === 'BLUE' ? 'BIRU' : 'MERAH';
+
       showInScreenConfirm(
         '🔍 SEMAKAN JURI',
-        `Minta pengesahan ${type} bagi Sudut ${colorName}?`,
+        `Minta pengesahan <b>${typeUpper}</b> bagi Sudut <b>${colorUpper}</b>?`,
         function() {
           socket.emit('requestVerification', { type, color });
         }
@@ -494,7 +489,6 @@
       document.body.removeChild(a);
     }
 
-    // PENGISYTIHARAN PEMENANG (POP-UP IN-SCREEN)
     function publishWinner() {
       showInScreenConfirm(
         '🏆 ISYTIHAR PEMENANG',
@@ -505,7 +499,6 @@
       );
     }
 
-    // RESET KESELURUHAN (POP-UP IN-SCREEN)
     function resetAll() {
       showInScreenConfirm(
         '⚠️ RESET KESELURUHAN',
