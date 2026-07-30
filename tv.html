@@ -321,25 +321,44 @@
     });
 
     // DISQUALIFIED
-    socket.on('disqualifiedAlert', (color) => {
-      const cUpper = String(color).toUpperCase();
-      const isBlue = (cUpper === 'BLUE' || cUpper === 'BIRU');
+socket.on('disqualifiedAlert', (color) => {
+  const isBlue = color.toUpperCase() === 'BLUE' || color.toUpperCase() === 'BIRU';
+  const sudutBatal = isBlue ? "SUDUT BIRU" : "SUDUT MERAH";
+  const sudutMenang = isBlue ? "SUDUT MERAH" : "SUDUT BIRU";
 
-      // Tentukan sudut yang dibatalkan dan sudut yang menang
-      const sudutBatal = isBlue ? "SUDUT BIRU" : "SUDUT MERAH";
-      const sudutMenang = isBlue ? "SUDUT MERAH" : "SUDUT BIRU";
+  // 1. Tajuk sudut yang dibatalkan mengikut warna sudut
+  document.getElementById('tvVerifyTitle').innerText = sudutBatal;
+  document.getElementById('tvVerifyTitle').style.color = isBlue ? "#3498db" : "#e74c3c"; 
 
-      // Tukar paparan overlay TV
-      document.getElementById('tvVerifyTitle').innerText = sudutBatal;
-      document.getElementById('tvVerifyDetail').innerText = "DISKUALIFIKASI";
-      document.getElementById('tvVerifyDetail').style.color = "#e74c3c";
-      
-      document.getElementById('tvVerifyResult').innerText = "KEMENANGAN KEPADA " + sudutMenang;
-      document.getElementById('tvVerifyResult').className = "overlay-result result-xsah";
-      
-      document.getElementById('tvOverlay').style.display = 'flex';
-      setTimeout(() => { document.getElementById('tvOverlay').style.display = 'none'; }, 6000);
-    });
+  // 2. Teks DISKUALIFIKASI warna kuning
+  document.getElementById('tvVerifyDetail').innerText = "DISKUALIFIKASI";
+  document.getElementById('tvVerifyDetail').style.color = "#f1c40f"; 
+
+  // 3. Teks pemenang dengan border & background kontra mengikut sudut pemenang
+  const verifyResultEl = document.getElementById('tvVerifyResult');
+  verifyResultEl.innerText = "KEMENANGAN KEPADA " + sudutMenang;
+  verifyResultEl.className = "overlay-result result-xsah";
+  
+  if (isBlue) {
+    // Pemenang ialah SUDUT MERAH
+    verifyResultEl.style.color = "#ff4d4d";
+    verifyResultEl.style.border = "2px solid #ff4d4d";
+    verifyResultEl.style.backgroundColor = "rgba(231, 76, 60, 0.2)";
+  } else {
+    // Pemenang ialah SUDUT BIRU
+    verifyResultEl.style.color = "#4dacff";
+    verifyResultEl.style.border = "2px solid #4dacff";
+    verifyResultEl.style.backgroundColor = "rgba(52, 152, 219, 0.2)";
+  }
+  
+  verifyResultEl.style.padding = "8px 15px";
+  verifyResultEl.style.borderRadius = "8px";
+  verifyResultEl.style.display = "inline-block";
+  verifyResultEl.style.marginTop = "10px";
+
+  document.getElementById('tvOverlay').style.display = 'flex';
+  setTimeout(() => { document.getElementById('tvOverlay').style.display = 'none'; }, 6000);
+});
   </script>
 </body>
 </html>
