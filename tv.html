@@ -326,18 +326,29 @@ socket.on('disqualifiedAlert', (color) => {
   const sudutBatal = isBlue ? "SUDUT BIRU" : "SUDUT MERAH";
   const sudutMenang = isBlue ? "SUDUT MERAH" : "SUDUT BIRU";
 
+  // Tetapkan saiz tulisan seragam untuk semua (contoh: 26px & bold)
+  const fontSizePilihan = "26px";
+
   // 1. Tajuk sudut yang dibatalkan mengikut warna sudut
-  document.getElementById('tvVerifyTitle').innerText = sudutBatal;
-  document.getElementById('tvVerifyTitle').style.color = isBlue ? "#3498db" : "#e74c3c"; 
+  const tvTitleEl = document.getElementById('tvVerifyTitle');
+  tvTitleEl.innerText = sudutBatal;
+  tvTitleEl.style.color = isBlue ? "#3498db" : "#e74c3c";
+  tvTitleEl.style.fontSize = fontSizePilihan;
+  tvTitleEl.style.fontWeight = "900";
 
   // 2. Teks DISKUALIFIKASI warna kuning
-  document.getElementById('tvVerifyDetail').innerText = "DISKUALIFIKASI";
-  document.getElementById('tvVerifyDetail').style.color = "#f1c40f"; 
+  const tvDetailEl = document.getElementById('tvVerifyDetail');
+  tvDetailEl.innerText = "DISKUALIFIKASI";
+  tvDetailEl.style.color = "#f1c40f";
+  tvDetailEl.style.fontSize = fontSizePilihan;
+  tvDetailEl.style.fontWeight = "900";
 
   // 3. Teks pemenang dengan border & background kontra mengikut sudut pemenang
   const verifyResultEl = document.getElementById('tvVerifyResult');
   verifyResultEl.innerText = "KEMENANGAN KEPADA " + sudutMenang;
   verifyResultEl.className = "overlay-result result-xsah";
+  verifyResultEl.style.fontSize = fontSizePilihan;
+  verifyResultEl.style.fontWeight = "900";
   
   if (isBlue) {
     // Pemenang ialah SUDUT MERAH
