@@ -466,19 +466,25 @@
 
     function togglePenalty(color, code, pts) { socket.emit('togglePenalty', { color, code, pts }); }
 
-    // FUNCTION UNTUK POP-UP PENGESAHAN DQ
+    // FUNGSI KHUSUS UNTUK POP-UP & EMIT DISQUALIFIED DIRECT KE TV
     function confirmDisqualification(color) {
-      const colorText = color === 'blue' ? 'SUDUT BIRU' : 'SUDUT MERAH';
+      const colorText = (color === 'blue' || color === 'biru') ? 'SUDUT BIRU' : 'SUDUT MERAH';
+      const winnerText = (color === 'blue' || color === 'biru') ? 'SUDUT MERAH' : 'SUDUT BIRU';
+
       showInScreenConfirm(
         '🚫 DISKUALIFIKASI (DQ)',
-        `Adakah anda pasti untuk men-<b>DISKUALIFIKASI (DQ)</b> Pesilat <b>${colorText}</b>?<br><br><small style="color: #e74c3c;">Tindakan ini akan menghentikan perlawanan dan memaparkan terus keputusan pada Skrin TV!</small>`,
+        `Adakah anda pasti untuk men-<b>DISKUALIFIKASI (DQ)</b> Pesilat <b>${colorText}</b>?<br><br>
+         <span style="color: #2ecc71; font-weight: bold;">Pemenang: ${winnerText}</span><br>
+         <small style="color: #e74c3c;">Nota: Teks pengumuman DQ akan dipaparkan secara langsung pada skrin TV!</small>`,
         function() {
-          // Hantar status penalti DQ ke pelayan
-          togglePenalty(color, 'DQ', 0);
-          // Hentikan masa (Pause)
+          // 1. Hentikan masa serta-merta
           controlTimer('pause');
-          // Isytihar pemenang ke skrin TV secara automatik
-          socket.emit('publishWinnerToTV');
+          
+          // 2. Tandakan penalti DQ dalam keadaan perlawanan
+          togglePenalty(color, 'DQ', 0);
+
+          // 3. Hantar terus isyarat disqualifiedAlert ke pelayan / TV
+          socket.emit('disqualifiedAlert', color);
         }
       );
     }
