@@ -487,23 +487,24 @@
 
     function togglePenalty(color, code, pts) { socket.emit('togglePenalty', { color, code, pts }); }
 
-    // FUNGSI KHUSUS UNTUK POP-UP & EMIT DISQUALIFIED DIRECT KE TV
-    function confirmDisqualification(color) {
-      const colorText = (color === 'blue' || color === 'biru') ? 'SUDUT BIRU' : 'SUDUT MERAH';
-      const winnerText = (color === 'blue' || color === 'biru') ? 'SUDUT MERAH' : 'SUDUT BIRU';
+    // FUNGSI KHUSUS UNTUK POP-UP & EMIT DISQUALIFIED DIRECT KE TV (DIBERSIHKAN)
+function confirmDisqualification(color) {
+  const colorText = (color === 'blue' || color === 'biru') ? 'SUDUT BIRU' : 'SUDUT MERAH';
+  const winnerText = (color === 'blue' || color === 'biru') ? 'SUDUT MERAH' : 'SUDUT BIRU';
 
-      showInScreenConfirm(
-        '🚫 DISKUALIFIKASI (DQ)',
-        `Adakah anda pasti untuk men-<b>DISKUALIFIKASI (DQ)</b> Pesilat <b>${colorText}</b>?<br><br>
-         <span style="color: #2ecc71; font-weight: bold;">Pemenang: ${winnerText}</span><br>
-         <small style="color: #e74c3c;">Nota: Teks pengumuman DQ akan dipaparkan secara langsung pada skrin TV!</small>`,
-        function() {
-          controlTimer('pause');
-          socket.emit('disqualifiedAlert', color);
-          socket.emit('togglePenalty', { color, code: 'DQ', pts: 0 });
-        }
-      );
+  showInScreenConfirm(
+    '🚫 DISKUALIFIKASI (DQ)',
+    `Adakah anda pasti untuk men-<b>DISKUALIFIKASI (DQ)</b> Pesilat <b>${colorText}</b>?<br><br>
+     <span style="color: #2ecc71; font-weight: bold;">Pemenang: ${winnerText}</span><br>
+     <small style="color: #e74c3c;">Nota: Teks pengumuman DQ akan dipaparkan secara langsung pada skrin TV!</small>`,
+    function() {
+      controlTimer('pause');
+      // Cukup sekadar menghantar disqualifiedAlert. 
+      // Server.js akan menguruskan state.penalties[color].DQ dan pemakluman ke skrin TV.
+      socket.emit('disqualifiedAlert', color);
     }
+  );
+}
 
     // FUNGSI KHUSUS PENGESAHAN POP-UP MARKAH JATUHAN (+3 / -3)
     function confirmJatuhanScore(color, pts) {
