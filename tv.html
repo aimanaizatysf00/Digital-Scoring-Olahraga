@@ -304,8 +304,13 @@
 
     // PROMPT VERIFICATION
     socket.on('promptVerification', (data) => {
+      const typeUpper = (data.type || '').toUpperCase();
+      let colorUpper = (data.color || '').toUpperCase();
+      if (colorUpper === 'BLUE') colorUpper = 'BIRU';
+      if (colorUpper === 'RED') colorUpper = 'MERAH';
+
       document.getElementById('tvVerifyTitle').innerText = "⚠️ SEMAKAN PENGESAHAN JURI ⚠️";
-      document.getElementById('tvVerifyDetail').innerText = data.type + ' - SUDUT ' + data.color.toUpperCase();
+      document.getElementById('tvVerifyDetail').innerText = `${typeUpper} - SUDUT ${colorUpper}`;
       document.getElementById('tvVerifyDetail').style.color = "#ffffff";
       document.getElementById('tvVerifyResult').innerText = "MENUNGGU 3 JURI...";
       document.getElementById('tvVerifyResult').className = "overlay-result result-pending";
@@ -315,61 +320,70 @@
     // VERIFICATION RESULT
     socket.on('verificationResult', (data) => {
       const resElem = document.getElementById('tvVerifyResult');
-      resElem.innerText = data.text;
+      
+      const rawType = data.type || document.getElementById('tvVerifyDetail').innerText.split(' - ')[0] || '';
+      const typeUpper = rawType.toUpperCase();
+      
+      const statusText = data.isApproved ? "SAH" : "TIDAK SAH";
+      resElem.innerText = `${typeUpper} ${statusText}`;
+      
       resElem.className = "overlay-result " + (data.isApproved ? "result-sah" : "result-xsah");
-      setTimeout(() => { document.getElementById('tvOverlay').style.display = 'none'; }, 4000);
+      
+      setTimeout(() => { 
+        document.getElementById('tvOverlay').style.display = 'none'; 
+      }, 4000);
     });
 
     // DISQUALIFIED
-socket.on('disqualifiedAlert', (color) => {
-  const isBlue = color.toUpperCase() === 'BLUE' || color.toUpperCase() === 'BIRU';
-  const sudutBatal = isBlue ? "SUDUT BIRU" : "SUDUT MERAH";
-  const sudutMenang = isBlue ? "SUDUT MERAH" : "SUDUT BIRU";
+    socket.on('disqualifiedAlert', (color) => {
+      const isBlue = color.toUpperCase() === 'BLUE' || color.toUpperCase() === 'BIRU';
+      const sudutBatal = isBlue ? "SUDUT BIRU" : "SUDUT MERAH";
+      const sudutMenang = isBlue ? "SUDUT MERAH" : "SUDUT BIRU";
 
-  // Tetapkan saiz tulisan seragam untuk semua (contoh: 26px & bold)
-  const fontSizePilihan = "26px";
+      // Tetapkan saiz tulisan seragam untuk semua (contoh: 26px & bold)
+      const fontSizePilihan = "26px";
 
-  // 1. Tajuk sudut yang dibatalkan mengikut warna sudut
-  const tvTitleEl = document.getElementById('tvVerifyTitle');
-  tvTitleEl.innerText = sudutBatal;
-  tvTitleEl.style.color = isBlue ? "#3498db" : "#e74c3c";
-  tvTitleEl.style.fontSize = fontSizePilihan;
-  tvTitleEl.style.fontWeight = "900";
+      // 1. Tajuk sudut yang dibatalkan mengikut warna sudut
+      const tvTitleEl = document.getElementById('tvVerifyTitle');
+      tvTitleEl.innerText = sudutBatal;
+      tvTitleEl.style.color = isBlue ? "#3498db" : "#e74c3c";
+      tvTitleEl.style.fontSize = fontSizePilihan;
+      tvTitleEl.style.fontWeight = "900";
 
-  // 2. Teks DISKUALIFIKASI warna kuning
-  const tvDetailEl = document.getElementById('tvVerifyDetail');
-  tvDetailEl.innerText = "DISKUALIFIKASI";
-  tvDetailEl.style.color = "#f1c40f";
-  tvDetailEl.style.fontSize = fontSizePilihan;
-  tvDetailEl.style.fontWeight = "900";
+      // 2. Teks DISKUALIFIKASI warna kuning
+      const tvDetailEl = document.getElementById('tvVerifyDetail');
+      tvDetailEl.innerText = "DISKUALIFIKASI";
+      tvDetailEl.style.color = "#f1c40f";
+      tvDetailEl.style.fontSize = fontSizePilihan;
+      tvDetailEl.style.fontWeight = "900";
 
-  // 3. Teks pemenang dengan border & background kontra mengikut sudut pemenang
-  const verifyResultEl = document.getElementById('tvVerifyResult');
-  verifyResultEl.innerText = "KEMENANGAN KEPADA " + sudutMenang;
-  verifyResultEl.className = "overlay-result result-xsah";
-  verifyResultEl.style.fontSize = fontSizePilihan;
-  verifyResultEl.style.fontWeight = "900";
-  
-  if (isBlue) {
-    // Pemenang ialah SUDUT MERAH
-    verifyResultEl.style.color = "#ff4d4d";
-    verifyResultEl.style.border = "2px solid #ff4d4d";
-    verifyResultEl.style.backgroundColor = "rgba(231, 76, 60, 0.2)";
-  } else {
-    // Pemenang ialah SUDUT BIRU
-    verifyResultEl.style.color = "#4dacff";
-    verifyResultEl.style.border = "2px solid #4dacff";
-    verifyResultEl.style.backgroundColor = "rgba(52, 152, 219, 0.2)";
-  }
-  
-  verifyResultEl.style.padding = "8px 15px";
-  verifyResultEl.style.borderRadius = "8px";
-  verifyResultEl.style.display = "inline-block";
-  verifyResultEl.style.marginTop = "10px";
+      // 3. Teks pemenang dengan border & background kontra mengikut sudut pemenang
+      const verifyResultEl = document.getElementById('tvVerifyResult');
+      verifyResultEl.innerText = "KEMENANGAN KEPADA " + sudutMenang;
+      verifyResultEl.className = "overlay-result result-xsah";
+      verifyResultEl.style.fontSize = fontSizePilihan;
+      verifyResultEl.style.fontWeight = "900";
+      
+      if (isBlue) {
+        // Pemenang ialah SUDUT MERAH
+        verifyResultEl.style.color = "#ff4d4d";
+        verifyResultEl.style.border = "2px solid #ff4d4d";
+        verifyResultEl.style.backgroundColor = "rgba(231, 76, 60, 0.2)";
+      } else {
+        // Pemenang ialah SUDUT BIRU
+        verifyResultEl.style.color = "#4dacff";
+        verifyResultEl.style.border = "2px solid #4dacff";
+        verifyResultEl.style.backgroundColor = "rgba(52, 152, 219, 0.2)";
+      }
+      
+      verifyResultEl.style.padding = "8px 15px";
+      verifyResultEl.style.borderRadius = "8px";
+      verifyResultEl.style.display = "inline-block";
+      verifyResultEl.style.marginTop = "10px";
 
-  document.getElementById('tvOverlay').style.display = 'flex';
-  setTimeout(() => { document.getElementById('tvOverlay').style.display = 'none'; }, 6000);
-});
+      document.getElementById('tvOverlay').style.display = 'flex';
+      setTimeout(() => { document.getElementById('tvOverlay').style.display = 'none'; }, 6000);
+    });
   </script>
 </body>
 </html>
