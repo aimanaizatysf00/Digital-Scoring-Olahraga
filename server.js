@@ -288,7 +288,7 @@ io.on('connection', (socket) => {
     addLog(`--- PUSINGAN ${roundNum} BERMULA ---`);
   });
 
-  // KEMASKINI MAKLUMAT PESERTA (Sokong dua-dua nama property: matchInfo & matchDetails)
+  // KEMASKINI MAKLUMAT PESERTA
   socket.on('updateMatchDetails', (data) => {
     const updated = {
       className: data.className || state.matchInfo.className,
@@ -301,6 +301,27 @@ io.on('connection', (socket) => {
     state.matchInfo = updated;
     addLog(`📝 Maklumat Perlawanan Dikemaskini (Match #${state.matchInfo.matchNo})`);
     io.emit('updateState', state);
+  });
+
+  // --- HANDLER BARU: DITERIMA DARI BUTANG JATUHAN PENGADIL ---
+  socket.on('addJatuhan', ({ color, pts }) => {
+    const points = Number(pts);
+    const col = String(color).toLowerCase();
+
+    if (state.score[col] !== undefined) {
+      state.score[col] += points;
+
+      // Kemaskini statistik jatuhan jika mata dimasukkan (+3) atau dibatalkan (-3)
+      if (points > 0) {
+        state.stats[col].jatuhan += 1;
+        addLog(`🤼 MARKAH JATUHAN (+${points}) - Sudut ${col.toUpperCase()}`);
+      } else {
+        if (state.stats[col].jatuhan > 0) state.stats[col].jatuhan -= 1;
+        addLog(`❌ BATAL MARKAH JATUHAN (${points}) - Sudut ${col.toUpperCase()}`);
+      }
+
+      io.emit('updateState', state);
+    }
   });
 
   // LOGIK MAJORITI JURI
