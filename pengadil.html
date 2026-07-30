@@ -499,12 +499,7 @@
         function() {
           controlTimer('pause');
           socket.emit('disqualifiedAlert', color);
-          socket.emit('clearPenalty', { color, code: 'DQ' }); 
-
-          const btn = document.getElementById(`btn_${color}_DQ`);
-          if (btn) {
-            btn.classList.remove('active-disqualify');
-          }
+          socket.emit('togglePenalty', { color, code: 'DQ', pts: 0 });
         }
       );
     }
