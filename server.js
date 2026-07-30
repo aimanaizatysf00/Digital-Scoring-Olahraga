@@ -27,12 +27,12 @@ let state = {
   },
   score: { blue: 0, red: 0 },
   penaltyPoints: { blue: 0, red: 0 },
-  // Status paparan hukuman bagi pusingan semasa sahaja
+  // Status paparan hukuman bagi pusingan semasa sahaja (Ralat sintaksis A1 dibaiki)
   penalties: {
     blue: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false },
     red: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false }
   },
-  // Rekod akumulasi/terkumpul hukuman dari Round 1 hingga pusingan akhir
+  // Rekod akumulasi/terkumpul hukuman dari Round 1 hingga pusingan akhir (Ralat sintaksis A1 dibaiki)
   totalPenalties: {
     blue: { A1: 0, A2: 0, T1: 0, T2: 0, P1: 0, P2: 0 },
     red: { A1: 0, A2: 0, T1: 0, T2: 0, P1: 0, P2: 0 }
@@ -68,7 +68,17 @@ function applyPenalties(color, penaltyType) {
   let pointsDeducted = 0;
   let isDisqualified = false;
 
-  const type = penaltyType.toUpperCase();
+  // Menyokong format "Pelanggaran Ringan/Sederhana/Berat" dan "Amaran/Teguran/Peringatan"
+  const rawType = String(penaltyType).toUpperCase().trim();
+  let type = rawType;
+
+  if (rawType.includes('RINGAN') || rawType.includes('AMARAN')) {
+    type = 'AMARAN';
+  } else if (rawType.includes('SEDERHANA') || rawType.includes('TEGURAN')) {
+    type = 'TEGURAN';
+  } else if (rawType.includes('BERAT') || rawType.includes('PERINGATAN')) {
+    type = 'PERINGATAN';
+  }
 
   if (type === 'AMARAN') {
     if (!p.A1) {
@@ -76,7 +86,7 @@ function applyPenalties(color, penaltyType) {
     } else if (!p.A2) {
       p.A2 = true; appliedCode = 'A2'; pointsDeducted = 0; // Amaran 2: 0 Mata
     } else {
-      // Amaran 1 & 2 dah ada -> Auto naik ke Teguran
+      // Amaran 1 & 2 dah ada -> Auto naik ke Teguran (Pelanggaran Sederhana)
       return applyPenalties(color, 'TEGURAN');
     }
   } else if (type === 'TEGURAN') {
@@ -85,7 +95,7 @@ function applyPenalties(color, penaltyType) {
     } else if (!p.T2) {
       p.T2 = true; appliedCode = 'T2'; pointsDeducted = 2; // Teguran 2: -2 Mata
     } else {
-      // Teguran 1 & 2 dah ada -> Auto naik ke Peringatan
+      // Teguran 1 & 2 dah ada -> Auto naik ke Peringatan (Pelanggaran Berat)
       return applyPenalties(color, 'PERINGATAN');
     }
   } else if (type === 'PERINGATAN') {
@@ -357,14 +367,12 @@ io.on('connection', (socket) => {
       const yesVotes = Object.values(currentVerification.votes).filter(v => v === true).length;
       const isAccepted = yesVotes >= 2;
       const color = currentVerification.color;
-      const type = currentVerification.type.toUpperCase();
+      const rawType = String(currentVerification.type).toUpperCase().trim();
 
       if (isAccepted) {
-        if (type === 'JATUHAN') {
+        if (rawType.includes('JATUHAN')) {
           // AUTOMATIK +3 MATA JIKA JATUHAN SAH
           state.score[color] += 3;
-
-          // Rekod statistik jatuhan (+3)
           state.stats[color].jatuhan += 1;
 
           addLog(`✅ Jatuhan SAH (+3 Mata [${color.toUpperCase()}])`);
@@ -376,33 +384,26 @@ io.on('connection', (socket) => {
             text: `JATUHAN SAH (+3 MATA)`
           });
 
-        } else if (['AMARAN', 'TEGURAN', 'PERINGATAN'].includes(type)) {
-          // AUTOMATIK TUKAR HUKUMAN & POTONG MARKAH
-          const penResult = applyPenalties(color, type);
+        } else {
+          // AUTOMATIK TUKAR HUKUMAN (RINGAN/SEDERHANA/BERAT ATAU AMARAN/TEGURAN/PERINGATAN)
+          const penResult = applyPenalties(color, rawType);
 
           if (penResult.isDisqualified) {
             addLog(`❌ DISQUALIFIED: Sudut ${color.toUpperCase()} Dibatalkan (DQ)`);
             io.emit('disqualifiedAlert', color);
           } else {
-            addLog(`⚠️ ${type} SAH (${penResult.appliedCode}): -${penResult.pointsDeducted} Mata [${color.toUpperCase()}]`);
+            addLog(`⚠️ ${currentVerification.type} SAH (${penResult.appliedCode}): -${penResult.pointsDeducted} Mata [${color.toUpperCase()}]`);
             
             io.emit('verificationResult', {
               type: currentVerification.type,
               color: color,
               isApproved: true,
-              text: `${type} SAH (${penResult.appliedCode}) -${penResult.pointsDeducted} MATA`
+              text: `${currentVerification.type} SAH (${penResult.appliedCode}) -${penResult.pointsDeducted} MATA`
             });
           }
-        } else {
-          io.emit('verificationResult', {
-            type: currentVerification.type,
-            color: color,
-            isApproved: true,
-            text: `${currentVerification.type} - SAH (${yesVotes}/3)`
-          });
         }
       } else {
-        addLog(`❌ Semakan ${type} TIDAK SAH [${color.toUpperCase()}]`);
+        addLog(`❌ Semakan ${currentVerification.type} TIDAK SAH [${color.toUpperCase()}]`);
         io.emit('verificationResult', {
           type: currentVerification.type,
           color: color,
