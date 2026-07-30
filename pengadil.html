@@ -52,7 +52,7 @@
     .btn-span-2 { grid-column: span 2; }
 
     .jatuhan-score-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; margin-bottom: 8px; }
-    .manual-score-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin-top: 5px; }
+    .manual-score-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 5px; }
     .btn-sm { padding: 8px 0; font-size: 0.85rem; font-weight: bold; }
     .btn-jatuhan { padding: 10px 0; font-size: 0.95rem; font-weight: bold; border-radius: 6px; border: none; cursor: pointer; }
     .verify-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 10px; }
@@ -160,24 +160,27 @@
       </div>
 
       <h4>✏️ PELARASAN MARKAH MANUAL</h4>
-     <!-- KOTAK MARKAH JATUHAN BIRU -->
-<div class="jatuhan-score-grid">
-  <button class="btn-jatuhan btn-info" onclick="confirmJatuhanScore('blue', 3)">🤼 JATUHAN +3</button>
-  <button class="btn-jatuhan btn-danger" onclick="confirmJatuhanScore('blue', -3)">❌ JATUHAN -3</button>
-</div>
+      <!-- KOTAK MARKAH JATUHAN BIRU -->
+      <div class="jatuhan-score-grid">
+        <button class="btn-jatuhan btn-info" onclick="confirmJatuhanScore('blue', 3)">🤼 JATUHAN +3</button>
+        <button class="btn-jatuhan btn-danger" onclick="confirmJatuhanScore('blue', -3)">❌ JATUHAN -3</button>
+      </div>
 
+      <!-- KOTAK MARKAH MANUAL LAJUR KIRI (+), LAJUR KANAN (-) -->
       <div class="manual-score-grid">
         <button class="btn btn-info btn-sm" onclick="modifyScore('blue', 1)">+1</button>
-        <button class="btn btn-info btn-sm" onclick="modifyScore('blue', 2)">+2</button>
-        <button class="btn btn-info btn-sm" onclick="modifyScore('blue', 3)">+3</button>
-        <button class="btn btn-info btn-sm" onclick="modifyScore('blue', 5)">+5</button>
-        <button class="btn btn-info btn-sm" onclick="modifyScore('blue', 10)">+10</button>
-      </div>
-      <div class="manual-score-grid" style="margin-top: 5px;">
         <button class="btn btn-danger btn-sm" onclick="modifyScore('blue', -1)">-1</button>
+
+        <button class="btn btn-info btn-sm" onclick="modifyScore('blue', 2)">+2</button>
         <button class="btn btn-danger btn-sm" onclick="modifyScore('blue', -2)">-2</button>
+
+        <button class="btn btn-info btn-sm" onclick="modifyScore('blue', 3)">+3</button>
         <button class="btn btn-danger btn-sm" onclick="modifyScore('blue', -3)">-3</button>
+
+        <button class="btn btn-info btn-sm" onclick="modifyScore('blue', 5)">+5</button>
         <button class="btn btn-danger btn-sm" onclick="modifyScore('blue', -5)">-5</button>
+
+        <button class="btn btn-info btn-sm" onclick="modifyScore('blue', 10)">+10</button>
         <button class="btn btn-danger btn-sm" onclick="modifyScore('blue', -10)">-10</button>
       </div>
 
@@ -208,23 +211,26 @@
 
       <h4>✏️ PELARASAN MARKAH MANUAL</h4>
       <!-- KOTAK MARKAH JATUHAN MERAH -->
-<div class="jatuhan-score-grid">
-  <button class="btn-jatuhan btn-danger" onclick="confirmJatuhanScore('red', 3)">🤼 JATUHAN +3</button>
-  <button class="btn-jatuhan btn-danger" onclick="confirmJatuhanScore('red', -3)">❌ JATUHAN -3</button>
-</div>
-
-      <div class="manual-score-grid">
-        <button class="btn btn-info btn-sm" onclick="modifyScore('red', 1)">+1</button>
-        <button class="btn btn-info btn-sm" onclick="modifyScore('red', 2)">+2</button>
-        <button class="btn btn-info btn-sm" onclick="modifyScore('red', 3)">+3</button>
-        <button class="btn btn-info btn-sm" onclick="modifyScore('red', 5)">+5</button>
-        <button class="btn btn-info btn-sm" onclick="modifyScore('red', 10)">+10</button>
+      <div class="jatuhan-score-grid">
+        <button class="btn-jatuhan btn-danger" onclick="confirmJatuhanScore('red', 3)">🤼 JATUHAN +3</button>
+        <button class="btn-jatuhan btn-danger" onclick="confirmJatuhanScore('red', -3)">❌ JATUHAN -3</button>
       </div>
-      <div class="manual-score-grid" style="margin-top: 5px;">
+
+      <!-- KOTAK MARKAH MANUAL LAJUR KIRI (+), LAJUR KANAN (-) -->
+      <div class="manual-score-grid">
+        <button class="btn btn-danger btn-sm" onclick="modifyScore('red', 1)">+1</button>
         <button class="btn btn-danger btn-sm" onclick="modifyScore('red', -1)">-1</button>
+
+        <button class="btn btn-danger btn-sm" onclick="modifyScore('red', 2)">+2</button>
         <button class="btn btn-danger btn-sm" onclick="modifyScore('red', -2)">-2</button>
+
+        <button class="btn btn-danger btn-sm" onclick="modifyScore('red', 3)">+3</button>
         <button class="btn btn-danger btn-sm" onclick="modifyScore('red', -3)">-3</button>
+
+        <button class="btn btn-danger btn-sm" onclick="modifyScore('red', 5)">+5</button>
         <button class="btn btn-danger btn-sm" onclick="modifyScore('red', -5)">-5</button>
+
+        <button class="btn btn-danger btn-sm" onclick="modifyScore('red', 10)">+10</button>
         <button class="btn btn-danger btn-sm" onclick="modifyScore('red', -10)">-10</button>
       </div>
 
