@@ -467,27 +467,34 @@
     function togglePenalty(color, code, pts) { socket.emit('togglePenalty', { color, code, pts }); }
 
     // FUNGSI KHUSUS UNTUK POP-UP & EMIT DISQUALIFIED DIRECT KE TV
-    function confirmDisqualification(color) {
-      const colorText = (color === 'blue' || color === 'biru') ? 'SUDUT BIRU' : 'SUDUT MERAH';
-      const winnerText = (color === 'blue' || color === 'biru') ? 'SUDUT MERAH' : 'SUDUT BIRU';
+function confirmDisqualification(color) {
+  const colorText = (color === 'blue' || color === 'biru') ? 'SUDUT BIRU' : 'SUDUT MERAH';
+  const winnerText = (color === 'blue' || color === 'biru') ? 'SUDUT MERAH' : 'SUDUT BIRU';
 
-      showInScreenConfirm(
-        '🚫 DISKUALIFIKASI (DQ)',
-        `Adakah anda pasti untuk men-<b>DISKUALIFIKASI (DQ)</b> Pesilat <b>${colorText}</b>?<br><br>
-         <span style="color: #2ecc71; font-weight: bold;">Pemenang: ${winnerText}</span><br>
-         <small style="color: #e74c3c;">Nota: Teks pengumuman DQ akan dipaparkan secara langsung pada skrin TV!</small>`,
-        function() {
-          // 1. Hentikan masa serta-merta
-          controlTimer('pause');
-          
-          // 2. Tandakan penalti DQ dalam keadaan perlawanan
-          togglePenalty(color, 'DQ', 0);
+  showInScreenConfirm(
+    '🚫 DISKUALIFIKASI (DQ)',
+    `Adakah anda pasti untuk men-<b>DISKUALIFIKASI (DQ)</b> Pesilat <b>${colorText}</b>?<br><br>
+     <span style="color: #2ecc71; font-weight: bold;">Pemenang: ${winnerText}</span><br>
+     <small style="color: #e74c3c;">Nota: Teks pengumuman DQ akan dipaparkan secara langsung pada skrin TV!</small>`,
+    function() {
+      // 1. Hentikan masa serta-merta
+      controlTimer('pause');
+      
+      // 2. Hantar isyarat disqualifiedAlert ke pelayan / TV
+      socket.emit('disqualifiedAlert', color);
 
-          // 3. Hantar terus isyarat disqualifiedAlert ke pelayan / TV
-          socket.emit('disqualifiedAlert', color);
-        }
-      );
+      // 3. Matikan / batalkan semula status DQ di pelayan (supaya butang tidak terus aktif)
+      // Jika butang DQ sempat dinyalakan atau ingin dipastikan tutup:
+      socket.emit('clearPenalty', { color, code: 'DQ' }); 
+
+      // 4. (Opsional/Fallback) Buang kelas CSS secara manual di UI pengadil
+      const btn = document.getElementById(`btn_${color}_DQ`);
+      if (btn) {
+        btn.classList.remove('active-disqualify');
+      }
     }
+  );
+}
 
     function modifyScore(color, pts) { socket.emit('modifyScore', { color, pts }); }
 
