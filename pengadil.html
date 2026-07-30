@@ -56,6 +56,10 @@
     .log-box { background: #0a0a0a; color: #00ffcc; font-family: monospace; height: 160px; overflow-y: auto; padding: 10px; border-radius: 6px; border: 1px solid #333; font-size: 0.85rem; }
     .log-box p { margin: 3px 0; border-bottom: 1px solid #1a1a1a; padding-bottom: 2px; }
 
+    /* INDIKATOR PUSINGAN AKTIF */
+    .btn-round { border: 2px solid transparent; transition: all 0.2s; }
+    .btn-round.active-round { border-color: #f1c40f !important; box-shadow: 0 0 10px rgba(241, 196, 15, 0.6); }
+
     /* POP-UP CUSTOM STYLES */
     .custom-modal-overlay {
       display: none; 
@@ -107,9 +111,9 @@
 
     <div class="controls-row" style="margin-top: 10px;">
       <span style="align-self: center; font-weight: bold; font-size: 0.9rem;">SET ROUND:</span>
-      <button class="btn btn-info" onclick="setRound(1)">ROUND 1</button>
-      <button class="btn btn-info" onclick="setRound(2)">ROUND 2</button>
-      <button class="btn btn-info" onclick="setRound(3)">ROUND 3</button>
+      <button class="btn btn-info btn-round" id="btn_round_1" onclick="setRound(1)">ROUND 1</button>
+      <button class="btn btn-info btn-round" id="btn_round_2" onclick="setRound(2)">ROUND 2</button>
+      <button class="btn btn-info btn-round" id="btn_round_3" onclick="setRound(3)">ROUND 3</button>
     </div>
   </div>
 
@@ -261,7 +265,12 @@
     let currentLogs = [];
     let hasPoppedForRound = false;
 
-    // UTILITY: POP-UP IN-SCREEN (OK / CANCEL) - TELAH DIBAIKI
+    // Hantar maklumat asal secara automatik apabila socket mula bersambung
+    socket.on('connect', () => {
+      updateMatchDetails();
+    });
+
+    // UTILITY: POP-UP IN-SCREEN (OK / CANCEL)
     function showInScreenConfirm(title, message, onConfirm) {
       const overlay = document.getElementById('confirmModalOverlay');
       const titleElem = document.getElementById('confirmTitle');
@@ -270,10 +279,7 @@
       const btnCancel = document.getElementById('btnConfirmCancel');
 
       titleElem.innerText = title;
-      
-      // Menggunakan innerHTML menggantikan innerText supaya HTML tag diproses
       msgElem.innerHTML = message;
-
       overlay.style.display = 'flex';
 
       btnOk.onclick = function() {
@@ -309,6 +315,28 @@
       document.getElementById('blueScore').innerText = state.score.blue;
       document.getElementById('redScore').innerText = state.score.red;
 
+      // Highlight butang Round yang sedang aktif
+      [1, 2, 3].forEach(r => {
+        const btnRound = document.getElementById(`btn_round_${r}`);
+        if (btnRound) {
+          if (state.round === r) {
+            btnRound.classList.add('active-round');
+          } else {
+            btnRound.classList.remove('active-round');
+          }
+        }
+      });
+
+      // Kemaskini borang maklumat jika disinkronkan dari server
+      if (state.matchDetails) {
+        if (state.matchDetails.className) document.getElementById('className').value = state.matchDetails.className;
+        if (state.matchDetails.matchNo) document.getElementById('matchNo').value = state.matchDetails.matchNo;
+        if (state.matchDetails.blueName) document.getElementById('blueName').value = state.matchDetails.blueName;
+        if (state.matchDetails.redName) document.getElementById('redName').value = state.matchDetails.redName;
+        if (state.matchDetails.blueTeam) document.getElementById('blueTeam').value = state.matchDetails.blueTeam;
+        if (state.matchDetails.redTeam) document.getElementById('redTeam').value = state.matchDetails.redTeam;
+      }
+
       // Status Warna Butang Hukuman
       const penConfig = [
         { code: 'A1', type: 'active-amaran' },
@@ -323,10 +351,7 @@
         penConfig.forEach(p => {
           const btn = document.getElementById(`btn_${color}_${p.code}`);
           if (btn) {
-            // Bersihkan dahulu semua class aktif pada butang
             btn.classList.remove('active-amaran', 'active-teguran', 'active-peringatan');
-            
-            // Nyalakan butang HANYA jika nilainya bernilai true
             if (state.penalties && state.penalties[color] && state.penalties[color][p.code]) {
               btn.classList.add(p.type);
             }
@@ -342,12 +367,12 @@
     });
 
     socket.on('newLog', (logText) => {
-      currentLogs.unshift(logText);
+      currentLogs.push(logText); // Simpan mengikut kronologi masa
       const logList = document.getElementById('logList');
       if (logList) {
         const p = document.createElement('p');
         p.innerText = logText;
-        logList.insertBefore(p, logList.firstChild);
+        logList.insertBefore(p, logList.firstChild); // Papar paling baru di atas
       }
     });
 
@@ -425,7 +450,6 @@
     function controlTimer(action) { socket.emit('controlTimer', action); }
     function setTimerDuration(seconds) { socket.emit('setTimerDuration', seconds); }
     
-    // FUNGSI SET ROUND (MEMBERITAHU SERVER UNTUK TUKAR PUSINGAN DAN RESET BUTANG HUKUMAN)
     function setRound(roundNum) { 
       socket.emit('setRound', roundNum); 
     }
@@ -460,7 +484,7 @@
     function downloadLog() {
       if (currentLogs.length === 0) return;
       const matchNo = document.getElementById('matchNo').value || '1';
-      const logContent = `=== REKOD LOG PERLAWANAN SILAT (MATCH ${matchNo}) ===\n\n` + currentLogs.slice().reverse().join('\n');
+      const logContent = `=== REKOD LOG PERLAWANAN SILAT (MATCH ${matchNo}) ===\n\n` + currentLogs.join('\n');
       const blob = new Blob([logContent], { type: 'text/plain;charset=utf-8' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
