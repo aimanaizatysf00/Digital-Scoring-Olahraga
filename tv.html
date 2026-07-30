@@ -357,12 +357,15 @@
       const tvDetailEl = document.getElementById('tvVerifyDetail');
       const verifyResultEl = document.getElementById('tvVerifyResult');
 
-      tvTitleEl.innerText = sudutBatal;
-      tvTitleEl.style.color = isBlue ? "#3498db" : "#e74c3c";
+      // 1. Tajuk Atas (Saiz 3vw - Sama macam tajuk "SEMAKAN PENGESAHAN JURI")
+      tvTitleEl.innerText = "⚠️ DISKUALIFIKASI ⚠️";
+      tvTitleEl.style.color = "#f1c40f";
 
-      tvDetailEl.innerText = "DISKUALIFIKASI";
-      tvDetailEl.style.color = "#f1c40f";
+      // 2. Teks Utama (Saiz 5vw - Sama besar macam "JATUHAN - SUDUT BIRU")
+      tvDetailEl.innerText = `DISKUALIFIKASI - ${sudutBatal}`;
+      tvDetailEl.style.color = isBlue ? "#3498db" : "#e74c3c";
 
+      // 3. Keputusan Pemenang di Bawah (Saiz 4vw)
       verifyResultEl.innerText = "KEMENANGAN KEPADA " + sudutMenang;
       verifyResultEl.className = "overlay-result result-xsah";
       
