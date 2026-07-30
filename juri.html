@@ -138,39 +138,9 @@
 
     .btn-blue-1 { background: #0056b3; }
     .btn-blue-2 { background: #0080ff; }
-    .btn-blue-3 { background: #003380; } /* Warna Biru untuk Jatuhan */
 
     .btn-red-1 { background: #9a0000; }
     .btn-red-2 { background: #d32f2f; }
-    .btn-red-3 { background: #660000; } /* Warna Merah untuk Jatuhan */
-
-    /* BUTANG JATUHAN (KHAS) */
-    .btn-jatuhan {
-      border: none;
-      border-radius: 10px;
-      font-size: 20px;
-      font-weight: 900;
-      color: #fff;
-      cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      padding: 12px 0;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-      transition: transform 0.08s ease, filter 0.08s ease;
-    }
-
-    .btn-jatuhan:active {
-      transform: scale(0.95);
-      filter: brightness(1.3);
-    }
-
-    .btn-jatuhan span {
-      font-size: 11px;
-      font-weight: bold;
-      margin-top: 2px;
-    }
 
     /* POPUP OVERLAY VERIFICATION */
     #verifyOverlay { 
@@ -247,11 +217,6 @@
           <span>TENDANGAN (+2)</span>
         </button>
       </div>
-      <!-- BUTANG JATUHAN SUDUT BIRU -->
-      <button class="btn-jatuhan btn-blue-3" onclick="sendScore('blue', 3)">
-        🤼‍♂️ 
-        <span>JATUHAN (+3)</span>
-      </button>
     </div>
 
     <!-- SUDUT MERAH -->
@@ -267,11 +232,6 @@
           <span>TENDANGAN (+2)</span>
         </button>
       </div>
-      <!-- BUTANG JATUHAN SUDUT MERAH -->
-      <button class="btn-jatuhan btn-red-3" onclick="sendScore('red', 3)">
-        🤼‍♂️ 
-        <span>JATUHAN (+3)</span>
-      </button>
     </div>
 
   </div>
