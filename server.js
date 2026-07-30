@@ -27,12 +27,12 @@ let state = {
   },
   score: { blue: 0, red: 0 },
   penaltyPoints: { blue: 0, red: 0 },
-  // Status paparan hukuman bagi pusingan semasa sahaja (Ralat sintaksis A1 dibaiki)
+  // Status paparan hukuman bagi pusingan semasa sahaja
   penalties: {
     blue: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false },
     red: { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false }
   },
-  // Rekod akumulasi/terkumpul hukuman dari Round 1 hingga pusingan akhir (Ralat sintaksis A1 dibaiki)
+  // Rekod akumulasi/terkumpul hukuman dari Round 1 hingga pusingan akhir
   totalPenalties: {
     blue: { A1: 0, A2: 0, T1: 0, T2: 0, P1: 0, P2: 0 },
     red: { A1: 0, A2: 0, T1: 0, T2: 0, P1: 0, P2: 0 }
@@ -189,6 +189,24 @@ function calculateWinner() {
 
   // 4. JIKA SEMUA PERKARA SAMA & SERI SEPENUHNYA
   return { winner: 'DRAW', blueScore, redScore, reason: 'Markah, Hukuman & Semua Statistik Teknik Seri' };
+}
+
+// FUNGSI PEMBANTU UNTUK MENGENDALIKAN PROSES DISKUALIFIKASI (DQ)
+function triggerDisqualification(color) {
+  const dqColor = String(color).toLowerCase();
+  const winningColor = (dqColor === 'blue' || dqColor === 'biru') ? 'red' : 'blue';
+  
+  state.winnerData = {
+    winner: winningColor,
+    disqualified: dqColor,
+    reason: `SUDUT ${dqColor.toUpperCase()} DI-DISKUALIFIKASI (DQ)`
+  };
+
+  addLog(`❌ DISQUALIFIED: Sudut ${dqColor.toUpperCase()} Dibatalkan (DQ)!`);
+  
+  // Broadcast ke semua peranti (Skrin TV, Pengadil, Juri)
+  io.emit('disqualifiedAlert', dqColor);
+  io.emit('updateState', state);
 }
 
 io.on('connection', (socket) => {
@@ -389,8 +407,7 @@ io.on('connection', (socket) => {
           const penResult = applyPenalties(color, rawType);
 
           if (penResult.isDisqualified) {
-            addLog(`❌ DISQUALIFIED: Sudut ${color.toUpperCase()} Dibatalkan (DQ)`);
-            io.emit('disqualifiedAlert', color);
+            triggerDisqualification(color);
           } else {
             addLog(`⚠️ ${currentVerification.type} SAH (${penResult.appliedCode}): -${penResult.pointsDeducted} Mata [${color.toUpperCase()}]`);
             
@@ -426,9 +443,14 @@ io.on('connection', (socket) => {
     io.emit('showWinnerOnTV', result);
   });
 
+  // TEKAN BUTANG DQ / DISQUALIFY DARI PENGADIL
   socket.on('disqualify', (color) => {
-    addLog(`❌ DISQUALIFIED: Sudut ${color.toUpperCase()} Dibatalkan`);
-    io.emit('disqualifiedAlert', color);
+    triggerDisqualification(color);
+  });
+
+  // PENERIMA SAMPLE TAMBAHAN JIKA PENGADIL HANTAR 'disqualifiedAlert' TRANSAKSI
+  socket.on('disqualifiedAlert', (color) => {
+    triggerDisqualification(color);
   });
 
   socket.on('resetScore', () => {
