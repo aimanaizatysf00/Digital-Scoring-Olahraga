@@ -407,6 +407,21 @@
       }
     });
 
+    // MENERIMA PEMBATALAN DQ DARI EVENT DISQUALIFIED ALERT
+    socket.on('disqualifiedAlert', (data) => {
+      if (!data) return;
+      const color = data.color;
+      const btnDQ = document.getElementById(`btn_${color}_DQ`);
+
+      if (data.action === 'cancel') {
+        isDisqualified[color] = false;
+        if (btnDQ) btnDQ.classList.remove('active-disqualify');
+      } else if (data.action === 'apply') {
+        isDisqualified[color] = true;
+        if (btnDQ) btnDQ.classList.add('active-disqualify');
+      }
+    });
+
     socket.on('newLog', (logText) => {
       currentLogs.push(logText);
       const logList = document.getElementById('logList');
