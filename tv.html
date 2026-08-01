@@ -38,8 +38,8 @@
     .blue-score { color: #3498db; background: #001f3f; border-color: #0080ff; }
     .red-score { color: #e74c3c; background: #3d0000; border-color: #d32f2f; }
 
-    /* GRID SIMBOL HUKUMAN */
-    .penalties-grid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(3, 1fr); gap: 5px; }
+    /* GRID SIMBOL HUKUMAN (DIUBAH KEPADA 7 KOTAK / REPEAT 4 BARIS) */
+    .penalties-grid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(4, 1fr); gap: 5px; }
     
     .p-icon-box { 
       background: #111; 
@@ -54,9 +54,13 @@
       transition: all 0.2s; 
     }
     
+    /* GAYA KOTAK DQ AGAR MEMENANGI GRID PENUH BARIS KE-4 */
+    .dq-box { grid-column: span 2; }
+    
     .p-icon-box.active-amaran { background: #f1c40f !important; color: #000 !important; border-color: #fff !important; box-shadow: 0 0 15px rgba(241, 196, 15, 0.9); }
     .p-icon-box.active-teguran { background: #e67e22 !important; color: #fff !important; border-color: #fff !important; box-shadow: 0 0 15px rgba(230, 126, 34, 0.9); }
     .p-icon-box.active-peringatan { background: #c0392b !important; color: #fff !important; border-color: #fff !important; box-shadow: 0 0 15px rgba(192, 57, 43, 0.9); }
+    .p-icon-box.active-disqualify { background: #9b59b6 !important; color: #fff !important; border-color: #fff !important; box-shadow: 0 0 20px rgba(155, 89, 182, 1); }
 
     /* INDIKATOR JURI */
     .juri-indicators { display: flex; gap: 5px; height: 6vh; }
@@ -120,6 +124,8 @@
         <div class="p-icon-box" id="blue_T2">✌🏻</div>
         <div class="p-icon-box" id="blue_P1">🙋🏻‍♂️</div>
         <div class="p-icon-box" id="blue_P2">🙋🏻‍♂️🙋🏻‍♂️</div>
+        <!-- KOTAK DISKUALIFIKASI (DQ) -->
+        <div class="p-icon-box dq-box" id="blue_DQ">🚫</div>
       </div>
       <div class="score-juri-section">
         <div class="score-box blue-score" id="blueScore">0</div>
@@ -148,6 +154,8 @@
         <div class="p-icon-box" id="red_T2">✌🏻</div>
         <div class="p-icon-box" id="red_P1">🙋🏻‍♂️</div>
         <div class="p-icon-box" id="red_P2">🙋🏻‍♂️🙋🏻‍♂️</div>
+        <!-- KOTAK DISKUALIFIKASI (DQ) -->
+        <div class="p-icon-box dq-box" id="red_DQ">🚫</div>
       </div>
     </div>
   </div>
@@ -227,21 +235,22 @@
         }
       }
 
-      // Update Lampu Penalti
+      // Update Lampu Penalti & DQ
       const penConfig = [
         { code: 'A1', type: 'active-amaran' },
         { code: 'A2', type: 'active-amaran' },
         { code: 'T1', type: 'active-teguran' },
         { code: 'T2', type: 'active-teguran' },
         { code: 'P1', type: 'active-peringatan' },
-        { code: 'P2', type: 'active-peringatan' }
+        { code: 'P2', type: 'active-peringatan' },
+        { code: 'DQ', type: 'active-disqualify' } // DITAMBAH: Konfigurasi Hukuman DQ
       ];
 
       ['blue', 'red'].forEach(color => {
         penConfig.forEach(p => {
           const elem = document.getElementById(`${color}_${p.code}`);
           if (elem) {
-            elem.classList.remove('active-amaran', 'active-teguran', 'active-peringatan');
+            elem.classList.remove('active-amaran', 'active-teguran', 'active-peringatan', 'active-disqualify');
             if (state.penalties && state.penalties[color] && state.penalties[color][p.code]) {
               elem.classList.add(p.type);
             }
@@ -357,15 +366,15 @@
       const tvDetailEl = document.getElementById('tvVerifyDetail');
       const verifyResultEl = document.getElementById('tvVerifyResult');
 
-      // 1. Tajuk Atas (Saiz 3vw - Sama macam tajuk "SEMAKAN PENGESAHAN JURI")
+      // 1. Tajuk Atas
       tvTitleEl.innerText = "⚠️ DISKUALIFIKASI ⚠️";
       tvTitleEl.style.color = "#f1c40f";
 
-      // 2. Teks Utama (Saiz 5vw - Sama besar macam "JATUHAN - SUDUT BIRU")
+      // 2. Teks Utama
       tvDetailEl.innerText = `${sudutBatal}`;
       tvDetailEl.style.color = isBlue ? "#3498db" : "#e74c3c";
 
-      // 3. Keputusan Pemenang di Bawah (Saiz 4vw)
+      // 3. Keputusan Pemenang di Bawah
       verifyResultEl.innerText = "KEMENANGAN KEPADA " + sudutMenang;
       verifyResultEl.className = "overlay-result result-xsah";
       
