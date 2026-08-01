@@ -284,6 +284,9 @@ io.on('connection', (socket) => {
     state.timer.isRunning = false;
     clearInterval(timerInterval);
 
+    // Otomatik padam indicator nyalaan bila tukar pusingan
+    io.emit('clearJuriSignal');
+
     io.emit('updateState', state);
     addLog(`--- PUSINGAN ${roundNum} BERMULA ---`);
   });
@@ -336,7 +339,13 @@ io.on('connection', (socket) => {
 
     addLog(`🔘 Juri ${juriId} tekan +${points} (${color.toUpperCase()})`);
 
-    io.emit('juriPressSignal', { juriId, color, points });
+    // Nyalakan indicator juri
+    io.emit('juriPressSignal', { juriId, color, points, active: true });
+
+    // Auto-padam nyalaan lampu juri lepas window 2.0 saat tamat
+    setTimeout(() => {
+      io.emit('clearJuriSignal', { juriId, color, points });
+    }, VERIFICATION_WINDOW);
 
     pendingScores = pendingScores.filter(item => (now - item.timestamp) <= VERIFICATION_WINDOW);
 
@@ -367,6 +376,9 @@ io.on('connection', (socket) => {
       pendingScores = pendingScores.filter(
         item => !(item.color === color && item.points === points)
       );
+
+      // Bila mata sah, serta-merta padam lampu juri
+      io.emit('clearJuriSignal', { color, points });
 
       io.emit('updateState', state);
     }
@@ -534,6 +546,10 @@ io.on('connection', (socket) => {
     state.winnerData = null;
     currentVerification = null;
     pendingScores = [];
+
+    // Padamkan semua lampu & overlay di TV bila reset
+    io.emit('clearJuriSignal');
+
     addLog(`🔄 Sistem Direset Keseluruhan`);
     io.emit('updateState', state);
   });
