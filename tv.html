@@ -38,7 +38,7 @@
     .blue-score { color: #3498db; background: #001f3f; border-color: #0080ff; }
     .red-score { color: #e74c3c; background: #3d0000; border-color: #d32f2f; }
 
-    /* GRID SIMBOL HUKUMAN (DIUBAH KEPADA 7 KOTAK / REPEAT 4 BARIS) */
+    /* GRID SIMBOL HUKUMAN */
     .penalties-grid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(4, 1fr); gap: 5px; }
     
     .p-icon-box { 
@@ -54,7 +54,6 @@
       transition: all 0.2s; 
     }
     
-    /* GAYA KOTAK DQ AGAR MEMENANGI GRID PENUH BARIS KE-4 */
     .dq-box { grid-column: span 2; }
     
     .p-icon-box.active-amaran { background: #f1c40f !important; color: #000 !important; border-color: #fff !important; box-shadow: 0 0 15px rgba(241, 196, 15, 0.9); }
@@ -67,7 +66,7 @@
     .juri-box { 
       flex: 1; background: #222; border: 2px solid #444; border-radius: 6px; 
       display: flex; justify-content: center; align-items: center; 
-      font-size: 1vw; font-weight: bold; color: #555; transition: all 0.15s ease;
+      font-size: 1.5vw; font-weight: bold; color: #555; transition: all 0.15s ease;
     }
 
     .juri-indicators #blue_juri_1.active,
@@ -124,7 +123,6 @@
         <div class="p-icon-box" id="blue_T2">✌🏻</div>
         <div class="p-icon-box" id="blue_P1">🙋🏻‍♂️</div>
         <div class="p-icon-box" id="blue_P2">🙋🏻‍♂️🙋🏻‍♂️</div>
-        <!-- KOTAK DISKUALIFIKASI (DQ) -->
         <div class="p-icon-box dq-box" id="blue_DQ">🚫</div>
       </div>
       <div class="score-juri-section">
@@ -154,7 +152,6 @@
         <div class="p-icon-box" id="red_T2">✌🏻</div>
         <div class="p-icon-box" id="red_P1">🙋🏻‍♂️</div>
         <div class="p-icon-box" id="red_P2">🙋🏻‍♂️🙋🏻‍♂️</div>
-        <!-- KOTAK DISKUALIFIKASI (DQ) -->
         <div class="p-icon-box dq-box" id="red_DQ">🚫</div>
       </div>
     </div>
@@ -213,13 +210,12 @@
 
         if (state.timer.isRunning) {
           timerElem.classList.remove('paused');
-          tvOverlay.style.display = 'none'; // Sembunyikan popup jika pemasa berjalan
+          tvOverlay.style.display = 'none'; 
         } else {
           timerElem.classList.add('paused');
           
-          // POPUP MASA TAMAT: Hanya ditunjukkan jika masa 0 DAN tiada pengisytiharan pemenang aktif
           if (state.timer.currentTime === 0 && !state.winnerData) {
-            resetOverlayStyle(); // Bersihkan sebarang gaya diskualifikasi/pengesahan sebelum ini
+            resetOverlayStyle(); 
             document.getElementById('tvVerifyTitle').innerText = "⏱️ PERHATIAN ⏱️";
             document.getElementById('tvVerifyDetail').innerText = "MASA TAMAT";
             document.getElementById('tvVerifyDetail').style.color = "#e74c3c";
@@ -227,7 +223,6 @@
             document.getElementById('tvVerifyResult').className = "overlay-result result-xsah";
             tvOverlay.style.display = 'flex';
           } else {
-            // Sembunyikan popup "MASA TAMAT" sebaik pengadil menukar round / reset masa (> 0)
             if (tvOverlay.style.display === 'flex' && document.getElementById('tvVerifyDetail').innerText === "MASA TAMAT") {
               tvOverlay.style.display = 'none';
             }
@@ -243,7 +238,7 @@
         { code: 'T2', type: 'active-teguran' },
         { code: 'P1', type: 'active-peringatan' },
         { code: 'P2', type: 'active-peringatan' },
-        { code: 'DQ', type: 'active-disqualify' } // DITAMBAH: Konfigurasi Hukuman DQ
+        { code: 'DQ', type: 'active-disqualify' }
       ];
 
       ['blue', 'red'].forEach(color => {
@@ -260,24 +255,27 @@
     });
 
     // =========================================================
-    // KAWALAN LAMPU ISYARAT JURI APABILA BUTANG DITEKAN
+    // KAWALAN LAMPU ISYARAT JURI (TUMBUK, TENDANG & JATUHAN)
     // =========================================================
     socket.on('juriPressSignal', (data) => {
       const color = data.color;
       const juriId = data.juriId;
       const points = Number(data.points);
+      const actionType = (data.type || '').toLowerCase(); // Semak jika ada jenis aksi dihantar
 
       const targetId = `${color}_juri_${juriId}`;
       const lampElement = document.getElementById(targetId);
 
       if (lampElement) {
         let symbol = '';
-        if (points === 1) {
+        
+        // Semakan berdasarkan nilai mata atau jenis aksi (Jatuhan = 3 mata / 'jatuhan')
+        if (points === 1 || actionType === 'tumbukan') {
           symbol = '👊🏻';
-        } else if (points === 2) {
+        } else if (points === 2 || actionType === 'tendangan') {
           symbol = '🦶🏻';
-        } else if (points === 3) {
-          symbol = '🤼‍♂️';
+        } else if (points === 3 || actionType === 'jatuhan') {
+          symbol = '🤼‍♂️'; // Simbol Jatuhan
         } else {
           symbol = `+${points}`;
         }
@@ -366,15 +364,12 @@
       const tvDetailEl = document.getElementById('tvVerifyDetail');
       const verifyResultEl = document.getElementById('tvVerifyResult');
 
-      // 1. Tajuk Atas
       tvTitleEl.innerText = "⚠️ DISKUALIFIKASI ⚠️";
       tvTitleEl.style.color = "#f1c40f";
 
-      // 2. Teks Utama
       tvDetailEl.innerText = `${sudutBatal}`;
       tvDetailEl.style.color = isBlue ? "#3498db" : "#e74c3c";
 
-      // 3. Keputusan Pemenang di Bawah
       verifyResultEl.innerText = "KEMENANGAN KEPADA " + sudutMenang;
       verifyResultEl.className = "overlay-result result-xsah";
       
