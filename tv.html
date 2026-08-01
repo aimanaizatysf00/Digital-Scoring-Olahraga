@@ -246,12 +246,21 @@
           const elem = document.getElementById(`${color}_${p.code}`);
           if (elem) {
             elem.classList.remove('active-amaran', 'active-teguran', 'active-peringatan', 'active-disqualify');
-            if (state.penalties && state.penalties[color] && state.penalties[color][p.code]) {
+            if (state.penalties && state.penalties[color] && state.penalties[color][p.code] === true) {
               elem.classList.add(p.type);
             }
           }
         });
       });
+
+      // Semak jika tiada lagi mana-mana sudut yang DQ untuk tutup overlay DQ jika aktif
+      const isBlueDQ = state.penalties && state.penalties.blue && state.penalties.blue.DQ === true;
+      const isRedDQ = state.penalties && state.penalties.red && state.penalties.red.DQ === true;
+      const tvTitleText = document.getElementById('tvVerifyTitle').innerText;
+
+      if (!isBlueDQ && !isRedDQ && tvTitleText.includes("DISKUALIFIKASI")) {
+        document.getElementById('tvOverlay').style.display = 'none';
+      }
     });
 
     // =========================================================
@@ -261,7 +270,7 @@
       const color = data.color;
       const juriId = data.juriId;
       const points = Number(data.points);
-      const actionType = (data.type || '').toLowerCase(); // Semak jika ada jenis aksi dihantar
+      const actionType = (data.type || '').toLowerCase();
 
       const targetId = `${color}_juri_${juriId}`;
       const lampElement = document.getElementById(targetId);
@@ -269,13 +278,12 @@
       if (lampElement) {
         let symbol = '';
         
-        // Semakan berdasarkan nilai mata atau jenis aksi (Jatuhan = 3 mata / 'jatuhan')
         if (points === 1 || actionType === 'tumbukan') {
           symbol = '👊🏻';
         } else if (points === 2 || actionType === 'tendangan') {
           symbol = '🦶🏻';
         } else if (points === 3 || actionType === 'jatuhan') {
-          symbol = '🤼‍♂️'; // Simbol Jatuhan
+          symbol = '🤼‍♂️';
         } else {
           symbol = `+${points}`;
         }
@@ -382,7 +390,12 @@
       }
 
       document.getElementById('tvOverlay').style.display = 'flex';
-      setTimeout(() => { document.getElementById('tvOverlay').style.display = 'none'; }, 6000);
+      setTimeout(() => { 
+        // Hanya tutup jika tiada lagi situasi DQ aktif
+        if (document.getElementById('tvVerifyTitle').innerText.includes("DISKUALIFIKASI")) {
+          document.getElementById('tvOverlay').style.display = 'none'; 
+        }
+      }, 6000);
     });
   </script>
 </body>
