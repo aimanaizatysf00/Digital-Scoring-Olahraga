@@ -7,7 +7,7 @@
   <script src="/socket.io/socket.io.js"></script>
   <style>
     * { box-sizing: border-box; font-family: 'Arial', sans-serif; }
-    body { background: #000; color: white; margin: 0; padding: 10px; height: 100vh; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
+    body { background: #000; color: white; margin: 0; padding: 10px; height: 10vh; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
 
     /* HEADER NAMA PESERTA */
     .names-header { display: flex; gap: 10px; height: 10vh; margin-bottom: 5px; }
@@ -168,6 +168,7 @@
   <script>
     const socket = io();
     let overlayTimeout = null; // Menyimpan rujukan pemasa untuk dibatalkan jika keadaan berubah
+    let isShowingCancelDQ = false; // Flag khas supaya updateState tak padamkan inscreen cancel DQ
 
     function formatTime(seconds) {
       const m = Math.floor(seconds / 60).toString().padStart(2, '0');
@@ -216,15 +217,15 @@
 
         if (state.timer.isRunning) {
           timerElem.classList.remove('paused');
-          // Tutup overlay jika tiada DQ atau pemenang aktif
+          // Tutup overlay jika tiada DQ atau pemenang aktif (dan bukan tengah tayang cancel DQ)
           const isDQActive = (state.penalties?.blue?.DQ) || (state.penalties?.red?.DQ);
-          if (!isDQActive && !state.winnerData) {
+          if (!isDQActive && !state.winnerData && !isShowingCancelDQ) {
             tvOverlay.style.display = 'none'; 
           }
         } else {
           timerElem.classList.add('paused');
           
-          if (state.timer.currentTime === 0 && !state.winnerData) {
+          if (state.timer.currentTime === 0 && !state.winnerData && !isShowingCancelDQ) {
             resetOverlayStyle(); 
             document.getElementById('tvVerifyTitle').innerText = "⏱️ PERHATIAN ⏱️";
             document.getElementById('tvVerifyDetail').innerText = "MASA TAMAT";
@@ -269,7 +270,7 @@
       const isBlueDQ = state.penalties && state.penalties.blue && Boolean(state.penalties.blue.DQ);
       const isRedDQ = state.penalties && state.penalties.red && Boolean(state.penalties.red.DQ);
 
-      if (!isBlueDQ && !isRedDQ && !state.winnerData) {
+      if (!isBlueDQ && !isRedDQ && !state.winnerData && !isShowingCancelDQ) {
         const titleText = document.getElementById('tvVerifyTitle').innerText;
         if (titleText.includes("DISKUALIFIKASI") || titleText.includes("DQ")) {
           document.getElementById('tvOverlay').style.display = 'none';
@@ -316,6 +317,7 @@
 
     // SHOW WINNER
     socket.on('showWinnerOnTV', (data) => {
+      isShowingCancelDQ = false;
       resetOverlayStyle();
       const overlay = document.getElementById('tvOverlay');
       const title = document.getElementById('tvVerifyTitle');
@@ -344,6 +346,7 @@
 
     // PROMPT VERIFICATION
     socket.on('promptVerification', (data) => {
+      isShowingCancelDQ = false;
       resetOverlayStyle();
       const typeUpper = (data.type || '').toUpperCase();
       let colorUpper = (data.color || '').toUpperCase();
@@ -388,6 +391,7 @@
       const verifyResultEl = document.getElementById('tvVerifyResult');
 
       if (isCancelled) {
+        isShowingCancelDQ = true;
         // NOTIFIKASI PEMBATALAN DQ (DIBATALKAN SEMULA)
         tvTitleEl.innerText = "ℹ️ PEMBATALAN DISKUALIFIKASI ℹ️";
         tvTitleEl.style.color = "#2ecc71";
@@ -404,8 +408,10 @@
 
         overlayTimeout = setTimeout(() => { 
           document.getElementById('tvOverlay').style.display = 'none'; 
-        }, 2500);
+          isShowingCancelDQ = false;
+        }, 3000);
       } else {
+        isShowingCancelDQ = false;
         // NOTIFIKASI DQ BIASA
         tvTitleEl.innerText = "⚠️ DISKUALIFIKASI ⚠️";
         tvTitleEl.style.color = "#f1c40f";
@@ -453,7 +459,9 @@
 
     // MEMPADAM OVERLAY DQ APABILA DITERIMA DARI SERVER
     socket.on('clearDisqualifiedOnTV', () => {
-      document.getElementById('tvOverlay').style.display = 'none';
+      if (!isShowingCancelDQ) {
+        document.getElementById('tvOverlay').style.display = 'none';
+      }
     });
   </script>
 </body>
