@@ -386,13 +386,13 @@
           }
         });
 
-        // Kemaskini status DQ daripada state server
-        const dqStatus = (state.penalties && state.penalties[color]) ? Boolean(state.penalties[color]['DQ']) : false;
-        isDisqualified[color] = dqStatus;
+        // Kemaskini status DQ dengan tepat dari server state
+        const hasDQ = Boolean(state.penalties && state.penalties[color] && state.penalties[color]['DQ']);
+        isDisqualified[color] = hasDQ;
 
         const btnDQ = document.getElementById(`btn_${color}_DQ`);
         if (btnDQ) {
-          if (dqStatus) {
+          if (isDisqualified[color]) {
             btnDQ.classList.add('active-disqualify');
           } else {
             btnDQ.classList.remove('active-disqualify');
@@ -407,7 +407,7 @@
       }
     });
 
-    // MENERIMA PEMBATALAN / APLIKASI DQ DARI EVENT DISQUALIFIED ALERT
+    // MENERIMA PEMBATALAN DQ DARI EVENT DISQUALIFIED ALERT
     socket.on('disqualifiedAlert', (data) => {
       if (!data) return;
       const color = data.color;
@@ -518,45 +518,39 @@
 
     function togglePenalty(color, code, pts) { socket.emit('togglePenalty', { color, code, pts }); }
 
-    // FUNGSI KHUSUS DISKUALIFIKASI (DQ) - DIBAIKI SYNC & EVENT EMISSION
+    // FUNGSI KHUSUS DISKUALIFIKASI (DQ) - TOGGLE BERDASARKAN BOOLEAN SAHAJA
     function handleDisqualification(color) {
       const btnDQ = document.getElementById(`btn_${color}_DQ`);
       const colorText = (color === 'blue' || color === 'biru') ? 'SUDUT BIRU' : 'SUDUT MERAH';
       const winnerText = (color === 'blue' || color === 'biru') ? 'SUDUT MERAH' : 'SUDUT BIRU';
 
-      // JIKA BELUM DQ -> TERUSKAN PROSES AKTIFKAN DQ
+      // JIKA SEKARANG FALSE -> NAK JADIKAN TRUE (AKTIFKAN DQ)
       if (!isDisqualified[color]) {
         showInScreenConfirm(
           '🚫 DISKUALIFIKASI (DQ)',
           `Adakah anda pasti untuk men-<b>DISKUALIFIKASI (DQ)</b> Pesilat <b>${colorText}</b>?<br><br>
            <span style="color: #2ecc71; font-weight: bold;">Pemenang: ${winnerText}</span><br>
            <small style="color: #e74c3c;">Nota: Teks pengumuman DQ akan dipaparkan secara langsung pada skrin TV!</small>`,
-          // TEKAN OK (Sahkan DQ)
-          function() {
+          function() { // TEKAN OK
             isDisqualified[color] = true;
             if (btnDQ) btnDQ.classList.add('active-disqualify');
             controlTimer('pause');
-            socket.emit('togglePenalty', { color: color, code: 'DQ', pts: 0 });
             socket.emit('disqualifiedAlert', { color: color, action: 'apply' });
           },
-          // TEKAN BATAL
-          function() {}
+          function() {} // TEKAN BATAL (Tiada tindakan)
         );
       } 
-      // JIKA SUDAH DQ -> PROSES BATALKAN DQ (UNTUK TUTUP BALIK)
+      // JIKA SEKARANG TRUE -> NAK JADIKAN FALSE (BATALKAN DQ)
       else {
         showInScreenConfirm(
           '🔄 BATAL DISKUALIFIKASI (DQ)',
           `Adakah anda pasti untuk <b>MEMBATALKAN DISKUALIFIKASI (DQ)</b> bagi <b>${colorText}</b>?`,
-          // TEKAN OK (Sahkan Batal DQ)
-          function() {
+          function() { // TEKAN OK
             isDisqualified[color] = false;
             if (btnDQ) btnDQ.classList.remove('active-disqualify');
-            socket.emit('togglePenalty', { color: color, code: 'DQ', pts: 0 });
             socket.emit('disqualifiedAlert', { color: color, action: 'cancel' });
           },
-          // TEKAN BATAL
-          function() {}
+          function() {} // TEKAN BATAL (Tiada tindakan)
         );
       }
     }
