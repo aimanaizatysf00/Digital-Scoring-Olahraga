@@ -7,7 +7,7 @@
   <script src="/socket.io/socket.io.js"></script>
   <style>
     * { box-sizing: border-box; font-family: 'Arial', sans-serif; }
-    body { background: #000; color: white; margin: 0; padding: 10px; height: 10vh; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
+    body { background: #000; color: white; margin: 0; padding: 10px; height: 100vh; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
 
     /* HEADER NAMA PESERTA */
     .names-header { display: flex; gap: 10px; height: 10vh; margin-bottom: 5px; }
@@ -168,7 +168,7 @@
   <script>
     const socket = io();
     let overlayTimeout = null; 
-    let isShowingCancelDQ = false; // Flag keselamatan supaya inscreen batal tak terpadam awal
+    let isShowingCancelDQ = false;
 
     function formatTime(seconds) {
       const m = Math.floor(seconds / 60).toString().padStart(2, '0');
@@ -276,7 +276,7 @@
     });
 
     // =========================================================
-    // KAWALAN LAMPU ISYARAT JURI
+    // KAWALAN LAMPU ISYARAT JURI & PENGADIL (JATUHAN)
     // =========================================================
     socket.on('juriPressSignal', (data) => {
       const color = data.color;
@@ -284,10 +284,10 @@
       const points = Number(data.points);
       const actionType = (data.type || '').toLowerCase();
 
-      // Jika jenis aksi adalah jatuhan atau mata bernilai 3, nyalakan ketiga-tiga kotak juri
+      // JIKA JATUHAN (Mata = 3 ATAU actionType = 'jatuhan')
+      // Nyala serentak di KETIGA-TIGA kotak Juri 1, 2, dan 3
       if (actionType === 'jatuhan' || points === 3) {
-        const juriIds = [1, 2, 3];
-        juriIds.forEach((id) => {
+        [1, 2, 3].forEach((id) => {
           const targetId = `${color}_juri_${id}`;
           const lampElement = document.getElementById(targetId);
 
@@ -303,17 +303,17 @@
           }
         });
       } else {
-        // Kawalan individu untuk tumbukan, tendangan, atau mata biasa
+        // JIKA PUKULAN ATAU TENDANGAN (Dari Juri Spesifik)
         const targetId = `${color}_juri_${juriId}`;
         const lampElement = document.getElementById(targetId);
 
         if (lampElement) {
           let symbol = '';
           
-          if (points === 1 || actionType === 'tumbukan') {
-            symbol = '👊🏻';
+          if (points === 1 || actionType === 'pukulan' || actionType === 'tumbukan') {
+            symbol = '👊🏻'; // Simbol Pukulan (1 Mata)
           } else if (points === 2 || actionType === 'tendangan') {
-            symbol = '🦶🏻';
+            symbol = '🦶🏻'; // Simbol Tendangan (2 Mata)
           } else {
             symbol = `+${points}`;
           }
@@ -331,7 +331,7 @@
       }
     });
 
-    // SHOW WINNER (Tukar kepada 5 saat / 5000ms)
+    // SHOW WINNER
     socket.on('showWinnerOnTV', (data) => {
       isShowingCancelDQ = false;
       resetOverlayStyle();
@@ -394,7 +394,7 @@
       }, 4000);
     });
 
-    // FUNGSI NOTIFIKASI DQ / PEMBATALAN DQ (Tukar kedua-duanya kepada 5 saat / 5000ms)
+    // FUNGSI NOTIFIKASI DQ / PEMBATALAN DQ
     function showDQNotification(color, isCancelled = false) {
       resetOverlayStyle();
       const colorStr = (typeof color === 'object' && color !== null) ? (color.color || '') : color;
@@ -407,7 +407,7 @@
       const verifyResultEl = document.getElementById('tvVerifyResult');
 
       if (isCancelled) {
-        isShowingCancelDQ = true; // Kunci supaya updateState tak boleh usik overlay ni
+        isShowingCancelDQ = true;
         
         tvTitleEl.innerText = "ℹ️ PEMBATALAN DISKUALIFIKASI ℹ️";
         tvTitleEl.style.color = "#2ecc71";
@@ -424,7 +424,7 @@
 
         overlayTimeout = setTimeout(() => { 
           document.getElementById('tvOverlay').style.display = 'none'; 
-          isShowingCancelDQ = false; // Lepas 5 saat baru buka kunci
+          isShowingCancelDQ = false;
         }, 5000);
       } else {
         isShowingCancelDQ = false;
