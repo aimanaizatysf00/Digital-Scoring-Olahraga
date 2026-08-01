@@ -30,7 +30,7 @@
     .main-board { display: flex; gap: 10px; height: 75vh; }
     .corner-side { flex: 1; display: flex; gap: 5px; }
 
-    /* LUKISAN SEKSYEN SKOR & JURI */
+    /* SEKSYEN SKOR & JURI */
     .score-juri-section { flex: 1.2; display: flex; flex-direction: column; gap: 5px; }
     
     /* SKOR BOX */
@@ -89,6 +89,7 @@
     .result-sah { background: #2ecc71; color: white; }
     .result-xsah { background: #e74c3c; color: white; }
     .result-pending { background: #f39c12; color: black; }
+    .result-info { background: #3498db; color: white; }
   </style>
 </head>
 <body>
@@ -166,6 +167,7 @@
 
   <script>
     const socket = io();
+    let overlayTimeout = null; // Menyimpan rujukan pemasa untuk dibatalkan jika keadaan berubah
 
     function formatTime(seconds) {
       const m = Math.floor(seconds / 60).toString().padStart(2, '0');
@@ -174,6 +176,10 @@
     }
 
     function resetOverlayStyle() {
+      if (overlayTimeout) {
+        clearTimeout(overlayTimeout);
+        overlayTimeout = null;
+      }
       const tvTitleEl = document.getElementById('tvVerifyTitle');
       const tvDetailEl = document.getElementById('tvVerifyDetail');
       const tvResultEl = document.getElementById('tvVerifyResult');
@@ -253,7 +259,7 @@
         });
       });
 
-      // Semak jika tiada lagi mana-mana sudut yang DQ untuk tutup overlay DQ jika aktif
+      // SEMAKAN STATUS DQ: Jika tiada lagi mana-mana sudut yang DQ, tutup terus overlay DQ yang aktif
       const isBlueDQ = state.penalties && state.penalties.blue && state.penalties.blue.DQ === true;
       const isRedDQ = state.penalties && state.penalties.red && state.penalties.red.DQ === true;
       const tvTitleText = document.getElementById('tvVerifyTitle').innerText;
@@ -325,7 +331,7 @@
       result.className = "overlay-result result-sah";
       overlay.style.display = 'flex';
 
-      setTimeout(() => { overlay.style.display = 'none'; }, 10000);
+      overlayTimeout = setTimeout(() => { overlay.style.display = 'none'; }, 10000);
     });
 
     // PROMPT VERIFICATION
@@ -356,13 +362,13 @@
       
       resElem.className = "overlay-result " + (data.isApproved ? "result-sah" : "result-xsah");
       
-      setTimeout(() => { 
+      overlayTimeout = setTimeout(() => { 
         document.getElementById('tvOverlay').style.display = 'none'; 
       }, 4000);
     });
 
-    // DISQUALIFIED
-    socket.on('disqualifiedAlert', (color) => {
+    // FUNGSI NOTIFIKASI DQ / PEMBATALAN DQ
+    function showDQNotification(color, isCancelled = false) {
       resetOverlayStyle();
       const isBlue = color.toUpperCase() === 'BLUE' || color.toUpperCase() === 'BIRU';
       const sudutBatal = isBlue ? "SUDUT BIRU" : "SUDUT MERAH";
@@ -372,30 +378,53 @@
       const tvDetailEl = document.getElementById('tvVerifyDetail');
       const verifyResultEl = document.getElementById('tvVerifyResult');
 
-      tvTitleEl.innerText = "⚠️ DISKUALIFIKASI ⚠️";
-      tvTitleEl.style.color = "#f1c40f";
+      if (isCancelled) {
+        // NOTIFIKASI PEMBATALAN DQ (DIBATALKAN SAMULA)
+        tvTitleEl.innerText = "ℹ️ PEMBATALAN DQ ℹ️";
+        tvTitleEl.style.color = "#2ecc71";
 
-      tvDetailEl.innerText = `${sudutBatal}`;
-      tvDetailEl.style.color = isBlue ? "#3498db" : "#e74c3c";
+        tvDetailEl.innerText = `DQ ${sudutBatal} DIBATALKAN`;
+        tvDetailEl.style.color = isBlue ? "#3498db" : "#e74c3c";
 
-      verifyResultEl.innerText = "KEMENANGAN KEPADA " + sudutMenang;
-      verifyResultEl.className = "overlay-result result-xsah";
-      
-      if (isBlue) {
+        verifyResultEl.innerText = "PERLAWANAN DITERUSKAN";
+        verifyResultEl.className = "overlay-result result-info";
+        verifyResultEl.style.backgroundColor = "#27ae60";
         verifyResultEl.style.color = "#ffffff";
-        verifyResultEl.style.backgroundColor = "#d32f2f";
       } else {
-        verifyResultEl.style.color = "#ffffff";
-        verifyResultEl.style.backgroundColor = "#0080ff";
+        // NOTIFIKASI DQ BIASA
+        tvTitleEl.innerText = "⚠️ DISKUALIFIKASI ⚠️";
+        tvTitleEl.style.color = "#f1c40f";
+
+        tvDetailEl.innerText = `${sudutBatal}`;
+        tvDetailEl.style.color = isBlue ? "#3498db" : "#e74c3c";
+
+        verifyResultEl.innerText = "KEMENANGAN KEPADA " + sudutMenang;
+        verifyResultEl.className = "overlay-result result-xsah";
+        
+        if (isBlue) {
+          verifyResultEl.style.color = "#ffffff";
+          verifyResultEl.style.backgroundColor = "#d32f2f";
+        } else {
+          verifyResultEl.style.color = "#ffffff";
+          verifyResultEl.style.backgroundColor = "#0080ff";
+        }
       }
 
       document.getElementById('tvOverlay').style.display = 'flex';
-      setTimeout(() => { 
-        // Hanya tutup jika tiada lagi situasi DQ aktif
-        if (document.getElementById('tvVerifyTitle').innerText.includes("DISKUALIFIKASI")) {
-          document.getElementById('tvOverlay').style.display = 'none'; 
-        }
-      }, 6000);
+
+      overlayTimeout = setTimeout(() => { 
+        document.getElementById('tvOverlay').style.display = 'none'; 
+      }, 5000);
+    }
+
+    // DISQUALIFIED ALERT FROM SOCKET
+    socket.on('disqualifiedAlert', (color) => {
+      showDQNotification(color, false);
+    });
+
+    // CANCEL DISQUALIFIED ALERT FROM SOCKET
+    socket.on('cancelDisqualifiedAlert', (color) => {
+      showDQNotification(color, true);
     });
   </script>
 </body>
