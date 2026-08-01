@@ -7,7 +7,7 @@
   <script src="/socket.io/socket.io.js"></script>
   <style>
     * { box-sizing: border-box; font-family: 'Arial', sans-serif; }
-    body { background: #000; color: white; margin: 0; padding: 10px; height: 10vh; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
+    body { background: #000; color: white; margin: 0; padding: 10px; height: 100vh; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
 
     /* HEADER NAMA PESERTA */
     .names-header { display: flex; gap: 10px; height: 10vh; margin-bottom: 5px; }
@@ -167,8 +167,8 @@
 
   <script>
     const socket = io();
-    let overlayTimeout = null; // Menyimpan rujukan pemasa untuk dibatalkan jika keadaan berubah
-    let isShowingCancelDQ = false; // Flag khas supaya updateState tak padamkan inscreen cancel DQ
+    let overlayTimeout = null; 
+    let isShowingCancelDQ = false; // Flag keselamatan supaya inscreen batal tak terpadam awal
 
     function formatTime(seconds) {
       const m = Math.floor(seconds / 60).toString().padStart(2, '0');
@@ -217,7 +217,6 @@
 
         if (state.timer.isRunning) {
           timerElem.classList.remove('paused');
-          // Tutup overlay jika tiada DQ atau pemenang aktif (dan bukan tengah tayang cancel DQ)
           const isDQActive = (state.penalties?.blue?.DQ) || (state.penalties?.red?.DQ);
           if (!isDQActive && !state.winnerData && !isShowingCancelDQ) {
             tvOverlay.style.display = 'none'; 
@@ -241,7 +240,7 @@
         }
       }
 
-      // Update Lampu Penalti & DQ (Padam Lampu DQ jika DQ = false)
+      // Update Lampu Penalti & DQ
       const penConfig = [
         { code: 'A1', type: 'active-amaran' },
         { code: 'A2', type: 'active-amaran' },
@@ -256,9 +255,7 @@
         penConfig.forEach(p => {
           const elem = document.getElementById(`${color}_${p.code}`);
           if (elem) {
-            // Sentiasa buang kelas aktif dulu
             elem.classList.remove('active-amaran', 'active-teguran', 'active-peringatan', 'active-disqualify');
-            // Hanya tambah jika bernilai true secara sah
             if (state.penalties && state.penalties[color] && Boolean(state.penalties[color][p.code])) {
               elem.classList.add(p.type);
             }
@@ -266,7 +263,7 @@
         });
       });
 
-      // SEMAKAN KEMASAN OVERLAY DQ: Tutup overlay jika kedua-dua sudut tiada DQ dan tiada pemenang
+      // SEMAKAN KEMASAN OVERLAY DQ
       const isBlueDQ = state.penalties && state.penalties.blue && Boolean(state.penalties.blue.DQ);
       const isRedDQ = state.penalties && state.penalties.red && Boolean(state.penalties.red.DQ);
 
@@ -279,7 +276,7 @@
     });
 
     // =========================================================
-    // KAWALAN LAMPU ISYARAT JURI (TUMBUK, TENDANG & JATUHAN)
+    // KAWALAN LAMPU ISYARAT JURI
     // =========================================================
     socket.on('juriPressSignal', (data) => {
       const color = data.color;
@@ -391,8 +388,8 @@
       const verifyResultEl = document.getElementById('tvVerifyResult');
 
       if (isCancelled) {
-        isShowingCancelDQ = true;
-        // NOTIFIKASI PEMBATALAN DQ (DIBATALKAN SEMULA)
+        isShowingCancelDQ = true; // Kunci supaya updateState tak boleh usik overlay ni
+        
         tvTitleEl.innerText = "ℹ️ PEMBATALAN DISKUALIFIKASI ℹ️";
         tvTitleEl.style.color = "#2ecc71";
 
@@ -408,11 +405,11 @@
 
         overlayTimeout = setTimeout(() => { 
           document.getElementById('tvOverlay').style.display = 'none'; 
-          isShowingCancelDQ = false;
+          isShowingCancelDQ = false; // Lepas 3 saat baru buka kunci
         }, 3000);
       } else {
         isShowingCancelDQ = false;
-        // NOTIFIKASI DQ BIASA
+        
         tvTitleEl.innerText = "⚠️ DISKUALIFIKASI ⚠️";
         tvTitleEl.style.color = "#f1c40f";
 
