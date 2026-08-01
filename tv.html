@@ -312,7 +312,7 @@
       }
     });
 
-    // SHOW WINNER
+    // SHOW WINNER (Tukar kepada 5 saat / 5000ms)
     socket.on('showWinnerOnTV', (data) => {
       isShowingCancelDQ = false;
       resetOverlayStyle();
@@ -338,7 +338,7 @@
       result.className = "overlay-result result-sah";
       overlay.style.display = 'flex';
 
-      overlayTimeout = setTimeout(() => { overlay.style.display = 'none'; }, 10000);
+      overlayTimeout = setTimeout(() => { overlay.style.display = 'none'; }, 5000);
     });
 
     // PROMPT VERIFICATION
@@ -375,7 +375,7 @@
       }, 4000);
     });
 
-    // FUNGSI NOTIFIKASI DQ / PEMBATALAN DQ
+    // FUNGSI NOTIFIKASI DQ / PEMBATALAN DQ (Tukar kedua-duanya kepada 5 saat / 5000ms)
     function showDQNotification(color, isCancelled = false) {
       resetOverlayStyle();
       const colorStr = (typeof color === 'object' && color !== null) ? (color.color || '') : color;
@@ -405,8 +405,8 @@
 
         overlayTimeout = setTimeout(() => { 
           document.getElementById('tvOverlay').style.display = 'none'; 
-          isShowingCancelDQ = false; // Lepas 3 saat baru buka kunci
-        }, 3000);
+          isShowingCancelDQ = false; // Lepas 5 saat baru buka kunci
+        }, 5000);
       } else {
         isShowingCancelDQ = false;
         
