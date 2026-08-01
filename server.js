@@ -205,7 +205,24 @@ function triggerDisqualification(color) {
   addLog(`❌ DISQUALIFIED: Sudut ${dqColor.toUpperCase()} Dibatalkan (DQ)!`);
   
   io.emit('showDisqualifiedOnTV', { color: dqColor });
-  io.emit('disqualifiedAlert', dqColor);
+  io.emit('disqualifiedAlert', { color: dqColor, action: 'apply' });
+  io.emit('updateState', state);
+}
+
+// FUNGSI PROSES PEMBATALAN DISKUALIFIKASI (CANCEL DQ)
+function cancelDisqualification(color) {
+  const dqColor = String(color).toLowerCase();
+
+  if (state.penalties[dqColor]) {
+    state.penalties[dqColor].DQ = false;
+  }
+
+  state.winnerData = null;
+
+  addLog(`🔄 Pembatalan Diskualifikasi (DQ) bagi Sudut ${dqColor.toUpperCase()}`);
+
+  io.emit('clearDisqualifiedOnTV', { color: dqColor });
+  io.emit('disqualifiedAlert', { color: dqColor, action: 'cancel' });
   io.emit('updateState', state);
 }
 
@@ -395,15 +412,7 @@ io.on('connection', (socket) => {
       if (!isCurrentlyDQ) {
         triggerDisqualification(color);
       } else {
-        // Pembatalan DQ jika sudah aktif
-        state.penalties[color].DQ = false;
-        state.winnerData = null;
-        addLog(`🔄 Pembatalan Diskualifikasi (DQ) bagi Sudut ${color.toUpperCase()}`);
-        
-        // HANTAR ISYARAT PEMBATALAN DQ KEPADA TV & CLIENTS
-        io.emit('cancelDisqualifiedAlert', { color });
-        io.emit('clearDisqualifiedOnTV', { color });
-        io.emit('updateState', state);
+        cancelDisqualification(color);
       }
       return;
     }
@@ -527,9 +536,23 @@ io.on('connection', (socket) => {
     triggerDisqualification(color);
   });
 
+  // HANDLING EVENT DISQUALIFIED ALERT BERDASARKAN ACTION ('apply' / 'cancel')
   socket.on('disqualifiedAlert', (data) => {
-    const targetColor = typeof data === 'object' ? data.color : data;
-    triggerDisqualification(targetColor);
+    let targetColor = '';
+    let action = 'apply';
+
+    if (typeof data === 'object' && data !== null) {
+      targetColor = data.color;
+      action = data.action || 'apply';
+    } else {
+      targetColor = data;
+    }
+
+    if (action === 'cancel') {
+      cancelDisqualification(targetColor);
+    } else {
+      triggerDisqualification(targetColor);
+    }
   });
 
   socket.on('resetScore', () => {
