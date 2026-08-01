@@ -222,6 +222,7 @@ function cancelDisqualification(color) {
   addLog(`🔄 Pembatalan Diskualifikasi (DQ) bagi Sudut ${dqColor.toUpperCase()}`);
 
   io.emit('clearDisqualifiedOnTV', { color: dqColor });
+  io.emit('cancelDisqualifiedAlert', { color: dqColor }); // MEMANCAR EVENT INI KE TV
   io.emit('disqualifiedAlert', { color: dqColor, action: 'cancel' });
   io.emit('updateState', state);
 }
@@ -534,6 +535,10 @@ io.on('connection', (socket) => {
 
   socket.on('disqualify', (color) => {
     triggerDisqualification(color);
+  });
+
+  socket.on('cancelDisqualification', (color) => {
+    cancelDisqualification(color);
   });
 
   // HANDLING EVENT DISQUALIFIED ALERT BERDASARKAN ACTION ('apply' / 'cancel')
