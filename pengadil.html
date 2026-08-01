@@ -44,11 +44,12 @@
       background: #2a2a2a; color: #fff; border: 1px solid #444; padding: 12px 8px; 
       font-size: 0.9rem; border-radius: 6px; cursor: pointer; display: flex; 
       align-items: center; justify-content: center; gap: 6px; font-weight: bold;
+      transition: all 0.2s ease;
     }
     .btn-penalty.active-amaran { background: #f1c40f !important; color: #000 !important; }
     .btn-penalty.active-teguran { background: #e67e22 !important; color: #fff !important; }
     .btn-penalty.active-peringatan { background: #c0392b !important; color: #fff !important; }
-    .btn-penalty.active-disqualify { background: #8e44ad !important; color: #fff !important; border-color: #9b59b6; }
+    .btn-penalty.active-disqualify { background: #8e44ad !important; color: #fff !important; border-color: #9b59b6; box-shadow: 0 0 10px #8e44ad; }
     .btn-span-2 { grid-column: span 2; }
 
     .jatuhan-score-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; margin-bottom: 8px; }
@@ -156,18 +157,16 @@
         <button class="btn-penalty" id="btn_blue_T2" onclick="togglePenalty('blue', 'T2', -2)">✌🏻 Teguran 2 (-2)</button>
         <button class="btn-penalty" id="btn_blue_P1" onclick="togglePenalty('blue', 'P1', -5)">🙋🏻‍♂️ Peringatan 1 (-5)</button>
         <button class="btn-penalty" id="btn_blue_P2" onclick="togglePenalty('blue', 'P2', -10)">🙋🏻‍♂️🙋🏻‍♂️ Peringatan 2 (-10)</button>
-        <button class="btn-penalty btn-span-2" id="btn_blue_DQ" onclick="confirmDisqualification('blue')">🚫 Diskualifikasi (DQ)</button>
+        <button class="btn-penalty btn-span-2" id="btn_blue_DQ" onclick="handleDisqualification('blue')">🚫 Diskualifikasi (DQ)</button>
       </div>
 
       <h4>🤼 MARKAH JATUHAN</h4>
-      <!-- KOTAK MARKAH JATUHAN BIRU -->
       <div class="jatuhan-score-grid">
         <button class="btn-jatuhan btn-info" onclick="confirmJatuhanScore('blue', 3)">🤼 JATUHAN +3</button>
         <button class="btn-jatuhan btn-danger" onclick="confirmJatuhanScore('blue', -3)">❌ JATUHAN -3</button>
       </div>
 
       <h4 style="margin-top: 15px;">✏️ PELARASAN MARKAH MANUAL</h4>
-      <!-- KOTAK MARKAH MANUAL LAJUR KIRI (+), LAJUR KANAN (-) -->
       <div class="manual-score-grid">
         <button class="btn btn-info btn-sm" onclick="modifyScore('blue', 1)">+1</button>
         <button class="btn btn-danger btn-sm" onclick="modifyScore('blue', -1)">-1</button>
@@ -207,17 +206,15 @@
         <button class="btn-penalty" id="btn_red_T2" onclick="togglePenalty('red', 'T2', -2)">✌🏻 Teguran 2 (-2)</button>
         <button class="btn-penalty" id="btn_red_P1" onclick="togglePenalty('red', 'P1', -5)">🙋🏻‍♂️ Peringatan 1 (-5)</button>
         <button class="btn-penalty" id="btn_red_P2" onclick="togglePenalty('red', 'P2', -10)">🙋🏻‍♂️🙋🏻‍♂️ Peringatan 2 (-10)</button>
-        <button class="btn-penalty btn-span-2" id="btn_red_DQ" onclick="confirmDisqualification('red')">🚫 Diskualifikasi (DQ)</button>
+        <button class="btn-penalty btn-span-2" id="btn_red_DQ" onclick="handleDisqualification('red')">🚫 Diskualifikasi (DQ)</button>
       </div>
 
       <h4>🤼 MARKAH JATUHAN</h4>
-      <!-- KOTAK MARKAH JATUHAN BIRU -->
       <div class="jatuhan-score-grid">
         <button class="btn-jatuhan btn-info" onclick="confirmJatuhanScore('red', 3)">🤼 JATUHAN +3</button>
         <button class="btn-jatuhan btn-danger" onclick="confirmJatuhanScore('red', -3)">❌ JATUHAN -3</button>
       </div>
       <h4 style="margin-top: 15px;">✏️ PELARASAN MARKAH MANUAL</h4>
-      <!-- KOTAK MARKAH MANUAL LAJUR KIRI (+), LAJUR KANAN (-) -->
       <div class="manual-score-grid">
         <button class="btn btn-info btn-sm" onclick="modifyScore('red', 1)">+1</button>
         <button class="btn btn-danger btn-sm" onclick="modifyScore('red', -1)">-1</button>
@@ -290,12 +287,18 @@
     let currentLogs = [];
     let hasPoppedForRound = false;
 
+    // Menjejak status DQ tempatan di UI
+    let isDisqualified = {
+      blue: false,
+      red: false
+    };
+
     socket.on('connect', () => {
       updateMatchDetails();
     });
 
     // UTILITY: POP-UP IN-SCREEN (OK / CANCEL)
-    function showInScreenConfirm(title, message, onConfirm) {
+    function showInScreenConfirm(title, message, onConfirm, onCancel) {
       const overlay = document.getElementById('confirmModalOverlay');
       const titleElem = document.getElementById('confirmTitle');
       const msgElem = document.getElementById('confirmMessage');
@@ -313,6 +316,7 @@
 
       btnCancel.onclick = function() {
         overlay.style.display = 'none';
+        if (onCancel) onCancel();
       };
     }
 
@@ -361,7 +365,7 @@
         if (state.matchDetails.redTeam) document.getElementById('redTeam').value = state.matchDetails.redTeam;
       }
 
-      // Status Warna Butang Hukuman (DQ dikeluarkan supaya diselia secara manual di frontend)
+      // Status Warna Butang Hukuman
       const penConfig = [
         { code: 'A1', type: 'active-amaran' },
         { code: 'A2', type: 'active-amaran' },
@@ -381,6 +385,19 @@
             }
           }
         });
+
+        // Kemaskini status butang DQ dari backend (jika ada)
+        if (state.penalties && state.penalties[color] && state.penalties[color]['DQ'] !== undefined) {
+          isDisqualified[color] = state.penalties[color]['DQ'];
+          const btnDQ = document.getElementById(`btn_${color}_DQ`);
+          if (btnDQ) {
+            if (isDisqualified[color]) {
+              btnDQ.classList.add('active-disqualify');
+            } else {
+              btnDQ.classList.remove('active-disqualify');
+            }
+          }
+        }
       });
 
       // Semak bila masa = 00:00
@@ -410,7 +427,7 @@
         winText = `<span style="color: #f1c40f; font-size: 1.3rem;">🤝 KEPUTUSAN: SERI</span><br><small style="color: #aaa;">(${result.reason})</small>`;
       }
 
-      showInScreenConfirm('🏆 KEPUTUSAN PEMENANG', winText, null);
+      showInScreenConfirm('🏆 KEPUTUSAN PEMENANG', winText, null, null);
     });
 
     function showRoundEndModal(state) {
@@ -486,48 +503,51 @@
 
     function togglePenalty(color, code, pts) { socket.emit('togglePenalty', { color, code, pts }); }
 
-    // FUNGSI KHUSUS DISKUALIFIKASI (DQ)
-function confirmDisqualification(color) {
-  const btnDQ = document.getElementById(`btn_${color}_DQ`);
-  
-  // 1. HIDUPKAN NYALAAN BUTANG SEBAIK SAHAJA DITEKAN
-  if (btnDQ) {
-    btnDQ.classList.add('active-disqualify');
-  }
+    // FUNGSI KHUSUS DISKUALIFIKASI (DQ) - TOGGLE WITH CONFIRMATION
+    function handleDisqualification(color) {
+      const btnDQ = document.getElementById(`btn_${color}_DQ`);
+      const colorText = (color === 'blue' || color === 'biru') ? 'SUDUT BIRU' : 'SUDUT MERAH';
+      const winnerText = (color === 'blue' || color === 'biru') ? 'SUDUT MERAH' : 'SUDUT BIRU';
 
-  const colorText = (color === 'blue' || color === 'biru') ? 'SUDUT BIRU' : 'SUDUT MERAH';
-  const winnerText = (color === 'blue' || color === 'biru') ? 'SUDUT MERAH' : 'SUDUT BIRU';
-
-  showInScreenConfirm(
-    '🚫 DISKUALIFIKASI (DQ)',
-    `Adakah anda pasti untuk men-<b>DISKUALIFIKASI (DQ)</b> Pesilat <b>${colorText}</b>?<br><br>
-     <span style="color: #2ecc71; font-weight: bold;">Pemenang: ${winnerText}</span><br>
-     <small style="color: #e74c3c;">Nota: Teks pengumuman DQ akan dipaparkan secara langsung pada skrin TV!</small>`,
-    // JIKA TEKAN OK:
-    function() {
-      controlTimer('pause');
-      socket.emit('disqualifiedAlert', color);
-      
-      // 2. PADAMKAN NYALAAN BUTANG SELEPAS TEKAN OK
-      if (btnDQ) {
-        btnDQ.classList.remove('active-disqualify');
+      // JIKA BELUM DQ -> TERUSKAN PROSES AKTIFKAN DQ
+      if (!isDisqualified[color]) {
+        showInScreenConfirm(
+          '🚫 DISKUALIFIKASI (DQ)',
+          `Adakah anda pasti untuk men-<b>DISKUALIFIKASI (DQ)</b> Pesilat <b>${colorText}</b>?<br><br>
+           <span style="color: #2ecc71; font-weight: bold;">Pemenang: ${winnerText}</span><br>
+           <small style="color: #e74c3c;">Nota: Teks pengumuman DQ akan dipaparkan secara langsung pada skrin TV!</small>`,
+          // TEKAN OK (Sahkan DQ)
+          function() {
+            isDisqualified[color] = true;
+            if (btnDQ) btnDQ.classList.add('active-disqualify');
+            controlTimer('pause');
+            socket.emit('disqualifiedAlert', { color: color, action: 'apply' });
+          },
+          // TEKAN BATAL (Batal tindakan)
+          function() {
+            // Kekal tidak aktif
+          }
+        );
+      } 
+      // JIKA SUDAH DQ -> PROSES BATALKAN DQ (UNTUK TUTUP BALIK)
+      else {
+        showInScreenConfirm(
+          '🔄 BATAL DISKUALIFIKASI (DQ)',
+          `Adakah anda pasti untuk <b>MEMBATALKAN DISKUALIFIKASI (DQ)</b> bagi <b>${colorText}</b>?`,
+          // TEKAN OK (Sahkan Batal DQ)
+          function() {
+            isDisqualified[color] = false;
+            if (btnDQ) btnDQ.classList.remove('active-disqualify');
+            socket.emit('disqualifiedAlert', { color: color, action: 'cancel' });
+          },
+          // TEKAN BATAL (Kekalkan status DQ)
+          function() {
+            // Kekal aktif
+          }
+        );
       }
     }
-  );
 
-  // JIKA TEKAN BATAL (CANCEL):
-  // Pastikan lampu butang juga dipadamkan jika pengadil membatalkan pilihan
-  const btnCancel = document.getElementById('btnConfirmCancel');
-  if (btnCancel) {
-    const originalCancelHandler = btnCancel.onclick;
-    btnCancel.onclick = function() {
-      if (btnDQ) {
-        btnDQ.classList.remove('active-disqualify');
-      }
-      document.getElementById('confirmModalOverlay').style.display = 'none';
-    };
-  }
-}
     // FUNGSI KHUSUS PENGESAHAN POP-UP MARKAH JATUHAN (+3 / -3)
     function confirmJatuhanScore(color, pts) {
       const colorText = (color === 'blue' || color === 'biru') ? 'SUDUT BIRU' : 'SUDUT MERAH';
@@ -537,9 +557,9 @@ function confirmDisqualification(color) {
         '🤼 MARKAH JATUHAN',
         `Adakah anda pasti untuk <b>${actionText}</b> bagi <b>${colorText}</b>?`,
         function() {
-          // Menghantar event 'addJatuhan' khusus untuk markah Jatuhan
           socket.emit('addJatuhan', { color, pts });
-        }
+        },
+        null
       );
     }
 
@@ -555,7 +575,8 @@ function confirmDisqualification(color) {
         `Minta pengesahan <b>${typeUpper}</b> bagi Sudut <b>${colorUpper}</b>?`,
         function() {
           socket.emit('requestVerification', { type, color });
-        }
+        },
+        null
       );
     }
 
@@ -578,7 +599,8 @@ function confirmDisqualification(color) {
         'Sahkan pengumuman pemenang ke skrin TV?',
         function() {
           socket.emit('publishWinnerToTV');
-        }
+        },
+        null
       );
     }
 
@@ -587,10 +609,17 @@ function confirmDisqualification(color) {
         '⚠️ RESET KESELURUHAN',
         'Adakah anda pasti untuk reset keseluruhan perlawanan?',
         function() {
+          isDisqualified.blue = false;
+          isDisqualified.red = false;
+          ['blue', 'red'].forEach(c => {
+            const btn = document.getElementById(`btn_${c}_DQ`);
+            if (btn) btn.classList.remove('active-disqualify');
+          });
           socket.emit('resetScore');
           document.getElementById('logList').innerHTML = '';
           currentLogs = [];
-        }
+        },
+        null
       );
     }
   </script>
