@@ -7,7 +7,7 @@
   <script src="/socket.io/socket.io.js"></script>
   <style>
     * { box-sizing: border-box; font-family: 'Arial', sans-serif; }
-    body { background: #000; color: white; margin: 0; padding: 10px; height: 100vh; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
+    body { background: #000; color: white; margin: 0; padding: 10px; height: 10vh; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
 
     /* HEADER NAMA PESERTA */
     .names-header { display: flex; gap: 10px; height: 10vh; margin-bottom: 5px; }
@@ -284,31 +284,50 @@
       const points = Number(data.points);
       const actionType = (data.type || '').toLowerCase();
 
-      const targetId = `${color}_juri_${juriId}`;
-      const lampElement = document.getElementById(targetId);
+      // Jika jenis aksi adalah jatuhan atau mata bernilai 3, nyalakan ketiga-tiga kotak juri
+      if (actionType === 'jatuhan' || points === 3) {
+        const juriIds = [1, 2, 3];
+        juriIds.forEach((id) => {
+          const targetId = `${color}_juri_${id}`;
+          const lampElement = document.getElementById(targetId);
 
-      if (lampElement) {
-        let symbol = '';
-        
-        if (points === 1 || actionType === 'tumbukan') {
-          symbol = '👊🏻';
-        } else if (points === 2 || actionType === 'tendangan') {
-          symbol = '🦶🏻';
-        } else if (points === 3 || actionType === 'jatuhan') {
-          symbol = '🤼‍♂️';
-        } else {
-          symbol = `+${points}`;
+          if (lampElement) {
+            const originalText = `JURI ${id}`;
+            lampElement.innerText = '🤼‍♂️';
+            lampElement.classList.add('active');
+
+            setTimeout(() => {
+              lampElement.innerText = originalText;
+              lampElement.classList.remove('active');
+            }, 1200);
+          }
+        });
+      } else {
+        // Kawalan individu untuk tumbukan, tendangan, atau mata biasa
+        const targetId = `${color}_juri_${juriId}`;
+        const lampElement = document.getElementById(targetId);
+
+        if (lampElement) {
+          let symbol = '';
+          
+          if (points === 1 || actionType === 'tumbukan') {
+            symbol = '👊🏻';
+          } else if (points === 2 || actionType === 'tendangan') {
+            symbol = '🦶🏻';
+          } else {
+            symbol = `+${points}`;
+          }
+
+          const originalText = `JURI ${juriId}`;
+
+          lampElement.innerText = symbol;
+          lampElement.classList.add('active');
+
+          setTimeout(() => {
+            lampElement.innerText = originalText;
+            lampElement.classList.remove('active');
+          }, 1200);
         }
-
-        const originalText = `JURI ${juriId}`;
-
-        lampElement.innerText = symbol;
-        lampElement.classList.add('active');
-
-        setTimeout(() => {
-          lampElement.innerText = originalText;
-          lampElement.classList.remove('active');
-        }, 1200);
       }
     });
 
