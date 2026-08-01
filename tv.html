@@ -7,7 +7,7 @@
   <script src="/socket.io/socket.io.js"></script>
   <style>
     * { box-sizing: border-box; font-family: 'Arial', sans-serif; }
-    body { background: #000; color: white; margin: 0; padding: 10px; height: 100vh; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
+    body { background: #000; color: white; margin: 0; padding: 10px; height: 10vh; height: 100vh; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
 
     /* HEADER NAMA PESERTA */
     .names-header { display: flex; gap: 10px; height: 10vh; margin-bottom: 5px; }
@@ -216,7 +216,11 @@
 
         if (state.timer.isRunning) {
           timerElem.classList.remove('paused');
-          tvOverlay.style.display = 'none'; 
+          // Tutup overlay jika tiada DQ atau pemenang aktif
+          const isDQActive = (state.penalties?.blue?.DQ) || (state.penalties?.red?.DQ);
+          if (!isDQActive && !state.winnerData) {
+            tvOverlay.style.display = 'none'; 
+          }
         } else {
           timerElem.classList.add('paused');
           
@@ -236,7 +240,7 @@
         }
       }
 
-      // Update Lampu Penalti & DQ (DIPERBAIKI)
+      // Update Lampu Penalti & DQ (Padam Lampu DQ jika DQ = false)
       const penConfig = [
         { code: 'A1', type: 'active-amaran' },
         { code: 'A2', type: 'active-amaran' },
@@ -253,7 +257,7 @@
           if (elem) {
             // Sentiasa buang kelas aktif dulu
             elem.classList.remove('active-amaran', 'active-teguran', 'active-peringatan', 'active-disqualify');
-            // Hanya tambah jika bernilai true/1 secara sah
+            // Hanya tambah jika bernilai true secara sah
             if (state.penalties && state.penalties[color] && Boolean(state.penalties[color][p.code])) {
               elem.classList.add(p.type);
             }
@@ -261,13 +265,15 @@
         });
       });
 
-      // SEMAKAN STATUS DQ: Jika tiada lagi mana-mana sudut yang DQ, tutup terus overlay DQ yang aktif
+      // SEMAKAN KEMASAN OVERLAY DQ: Tutup overlay jika kedua-dua sudut tiada DQ dan tiada pemenang
       const isBlueDQ = state.penalties && state.penalties.blue && Boolean(state.penalties.blue.DQ);
       const isRedDQ = state.penalties && state.penalties.red && Boolean(state.penalties.red.DQ);
-      const tvTitleText = document.getElementById('tvVerifyTitle').innerText;
 
-      if (!isBlueDQ && !isRedDQ && tvTitleText.includes("DISKUALIFIKASI")) {
-        document.getElementById('tvOverlay').style.display = 'none';
+      if (!isBlueDQ && !isRedDQ && !state.winnerData) {
+        const titleText = document.getElementById('tvVerifyTitle').innerText;
+        if (titleText.includes("DISKUALIFIKASI") || titleText.includes("DQ")) {
+          document.getElementById('tvOverlay').style.display = 'none';
+        }
       }
     });
 
@@ -369,7 +375,7 @@
       }, 4000);
     });
 
-    // FUNGSI NOTIFIKASI DQ / PEMBATALAN DQ (DIPERBAIKI)
+    // FUNGSI NOTIFIKASI DQ / PEMBATALAN DQ
     function showDQNotification(color, isCancelled = false) {
       resetOverlayStyle();
       const colorStr = (typeof color === 'object' && color !== null) ? (color.color || '') : color;
@@ -393,6 +399,12 @@
         verifyResultEl.className = "overlay-result result-info";
         verifyResultEl.style.backgroundColor = "#27ae60";
         verifyResultEl.style.color = "#ffffff";
+
+        document.getElementById('tvOverlay').style.display = 'flex';
+
+        overlayTimeout = setTimeout(() => { 
+          document.getElementById('tvOverlay').style.display = 'none'; 
+        }, 2500);
       } else {
         // NOTIFIKASI DQ BIASA
         tvTitleEl.innerText = "⚠️ DISKUALIFIKASI ⚠️";
@@ -411,16 +423,16 @@
           verifyResultEl.style.color = "#ffffff";
           verifyResultEl.style.backgroundColor = "#0080ff";
         }
+
+        document.getElementById('tvOverlay').style.display = 'flex';
+
+        overlayTimeout = setTimeout(() => { 
+          document.getElementById('tvOverlay').style.display = 'none'; 
+        }, 5000);
       }
-
-      document.getElementById('tvOverlay').style.display = 'flex';
-
-      overlayTimeout = setTimeout(() => { 
-        document.getElementById('tvOverlay').style.display = 'none'; 
-      }, 5000);
     }
 
-    // DISQUALIFIED ALERT FROM SOCKET (HANDLES BOTH OBJECT & STRING DATA)
+    // DISQUALIFIED ALERT FROM SOCKET
     socket.on('disqualifiedAlert', (data) => {
       if (typeof data === 'object' && data !== null) {
         if (data.action === 'cancel') {
@@ -437,6 +449,11 @@
     socket.on('cancelDisqualifiedAlert', (data) => {
       const colorVal = (typeof data === 'object' && data !== null) ? data.color : data;
       showDQNotification(colorVal, true);
+    });
+
+    // MEMPADAM OVERLAY DQ APABILA DITERIMA DARI SERVER
+    socket.on('clearDisqualifiedOnTV', () => {
+      document.getElementById('tvOverlay').style.display = 'none';
     });
   </script>
 </body>
