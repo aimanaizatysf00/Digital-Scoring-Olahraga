@@ -7,7 +7,7 @@
   <script src="/socket.io/socket.io.js"></script>
   <style>
     * { box-sizing: border-box; font-family: 'Arial', sans-serif; }
-    body { background: #000; color: white; margin: 0; padding: 10px; height: 10vh; height: 100vh; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
+    body { background: #000; color: white; margin: 0; padding: 10px; height: 100vh; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
 
     /* HEADER NAMA PESERTA */
     .names-header { display: flex; gap: 10px; height: 10vh; margin-bottom: 5px; }
@@ -389,7 +389,7 @@
 
       if (isCancelled) {
         // NOTIFIKASI PEMBATALAN DQ (DIBATALKAN SEMULA)
-        tvTitleEl.innerText = "ℹ️ PEMBATALAN DQ ℹ️";
+        tvTitleEl.innerText = "ℹ️ PEMBATALAN DISKUALIFIKASI ℹ️";
         tvTitleEl.style.color = "#2ecc71";
 
         tvDetailEl.innerText = `DQ ${sudutBatal} DIBATALKAN`;
