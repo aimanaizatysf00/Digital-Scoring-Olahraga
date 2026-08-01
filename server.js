@@ -315,6 +315,9 @@ io.on('connection', (socket) => {
       if (points > 0) {
         state.stats[col].jatuhan += 1;
         addLog(`🤼 MARKAH JATUHAN (+${points}) - Sudut ${col.toUpperCase()}`);
+        
+        // Hantar isyarat langsung ke TV untuk tayang animasi/nyalaan Jatuhan
+        io.emit('showJatuhanOverlay', { color: col, pts: points });
       } else {
         if (state.stats[col].jatuhan > 0) state.stats[col].jatuhan -= 1;
         addLog(`❌ BATAL MARKAH JATUHAN (${points}) - Sudut ${col.toUpperCase()}`);
