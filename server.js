@@ -280,12 +280,16 @@ io.on('connection', (socket) => {
       red:  { A1: false, A2: false, T1: false, T2: false, P1: false, P2: false, DQ: false }
     };
 
+    // Bersihkan status pemenang/DQ jika tukar pusingan
+    state.winnerData = null;
+
     state.timer.currentTime = state.timer.duration || 90;
     state.timer.isRunning = false;
     clearInterval(timerInterval);
 
-    // Otomatik padam indicator nyalaan bila tukar pusingan
+    // Otomatik padam indicator nyalaan & overlay DQ bila tukar pusingan
     io.emit('clearJuriSignal');
+    io.emit('clearDisqualifiedOnTV');
 
     io.emit('updateState', state);
     addLog(`--- PUSINGAN ${roundNum} BERMULA ---`);
@@ -395,6 +399,10 @@ io.on('connection', (socket) => {
         state.penalties[color].DQ = false;
         state.winnerData = null;
         addLog(`🔄 Pembatalan Diskualifikasi (DQ) bagi Sudut ${color.toUpperCase()}`);
+        
+        // HANTAR ISYARAT PEMBATALAN DQ KEPADA TV & CLIENTS
+        io.emit('cancelDisqualifiedAlert', { color });
+        io.emit('clearDisqualifiedOnTV', { color });
         io.emit('updateState', state);
       }
       return;
@@ -549,6 +557,7 @@ io.on('connection', (socket) => {
 
     // Padamkan semua lampu & overlay di TV bila reset
     io.emit('clearJuriSignal');
+    io.emit('clearDisqualifiedOnTV');
 
     addLog(`🔄 Sistem Direset Keseluruhan`);
     io.emit('updateState', state);
