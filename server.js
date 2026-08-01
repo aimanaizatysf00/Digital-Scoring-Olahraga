@@ -375,7 +375,16 @@ io.on('connection', (socket) => {
   // HUKUMAN & PENALTI MANUAL
   socket.on('togglePenalty', ({ color, code, pts }) => {
     if (code === 'DQ') {
-      triggerDisqualification(color);
+      const isCurrentlyDQ = !!(state.penalties[color] && state.penalties[color].DQ);
+      if (!isCurrentlyDQ) {
+        triggerDisqualification(color);
+      } else {
+        // Pembatalan DQ jika sudah aktif
+        state.penalties[color].DQ = false;
+        state.winnerData = null;
+        addLog(`🔄 Pembatalan Diskualifikasi (DQ) bagi Sudut ${color.toUpperCase()}`);
+        io.emit('updateState', state);
+      }
       return;
     }
 
