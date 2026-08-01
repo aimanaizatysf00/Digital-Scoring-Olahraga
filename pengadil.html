@@ -386,33 +386,19 @@
           }
         });
 
-        ['blue', 'red'].forEach(color => {
-  // 1. Kemaskini Butang Penalti Biasa
-  penConfig.forEach(p => {
-    const btn = document.getElementById(`btn_${color}_${p.code}`);
-    if (btn) {
-      btn.classList.remove('active-amaran', 'active-teguran', 'active-peringatan');
-      if (state.penalties && state.penalties[color] && state.penalties[color][p.code]) {
-        btn.classList.add(p.type);
-      }
-    }
-  });
+        // Kemaskini status DQ dengan tepat (Menyelesaikan isu butang tidak terpadam)
+        const dqStatus = (state.penalties && state.penalties[color]) ? Boolean(state.penalties[color]['DQ']) : false;
+        isDisqualified[color] = dqStatus;
 
-  // 2. KEMASKINI BUTANG DQ (DIPERBAIKI)
-  const dqStatus = (state.penalties && state.penalties[color]) ? Boolean(state.penalties[color]['DQ']) : false;
-  
-  // Segarkan pembolehubah tempatan
-  isDisqualified[color] = dqStatus;
-
-  const btnDQ = document.getElementById(`btn_${color}_DQ`);
-  if (btnDQ) {
-    if (dqStatus) {
-      btnDQ.classList.add('active-disqualify');
-    } else {
-      btnDQ.classList.remove('active-disqualify'); // Akan sentiasa dipadam jika status DQ false/undefined
-    }
-  }
-});
+        const btnDQ = document.getElementById(`btn_${color}_DQ`);
+        if (btnDQ) {
+          if (dqStatus) {
+            btnDQ.classList.add('active-disqualify');
+          } else {
+            btnDQ.classList.remove('active-disqualify');
+          }
+        }
+      });
 
       // Semak bila masa = 00:00
       if (state.timer.currentTime === 0 && !state.timer.isRunning && !hasPoppedForRound) {
