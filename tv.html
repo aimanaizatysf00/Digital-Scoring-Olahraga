@@ -236,7 +236,7 @@
         }
       }
 
-      // Update Lampu Penalti & DQ
+      // Update Lampu Penalti & DQ (DIPERBAIKI)
       const penConfig = [
         { code: 'A1', type: 'active-amaran' },
         { code: 'A2', type: 'active-amaran' },
@@ -251,8 +251,10 @@
         penConfig.forEach(p => {
           const elem = document.getElementById(`${color}_${p.code}`);
           if (elem) {
+            // Sentiasa buang kelas aktif dulu
             elem.classList.remove('active-amaran', 'active-teguran', 'active-peringatan', 'active-disqualify');
-            if (state.penalties && state.penalties[color] && state.penalties[color][p.code] === true) {
+            // Hanya tambah jika bernilai true/1 secara sah
+            if (state.penalties && state.penalties[color] && Boolean(state.penalties[color][p.code])) {
               elem.classList.add(p.type);
             }
           }
@@ -260,8 +262,8 @@
       });
 
       // SEMAKAN STATUS DQ: Jika tiada lagi mana-mana sudut yang DQ, tutup terus overlay DQ yang aktif
-      const isBlueDQ = state.penalties && state.penalties.blue && state.penalties.blue.DQ === true;
-      const isRedDQ = state.penalties && state.penalties.red && state.penalties.red.DQ === true;
+      const isBlueDQ = state.penalties && state.penalties.blue && Boolean(state.penalties.blue.DQ);
+      const isRedDQ = state.penalties && state.penalties.red && Boolean(state.penalties.red.DQ);
       const tvTitleText = document.getElementById('tvVerifyTitle').innerText;
 
       if (!isBlueDQ && !isRedDQ && tvTitleText.includes("DISKUALIFIKASI")) {
@@ -367,10 +369,11 @@
       }, 4000);
     });
 
-    // FUNGSI NOTIFIKASI DQ / PEMBATALAN DQ
+    // FUNGSI NOTIFIKASI DQ / PEMBATALAN DQ (DIPERBAIKI)
     function showDQNotification(color, isCancelled = false) {
       resetOverlayStyle();
-      const isBlue = color.toUpperCase() === 'BLUE' || color.toUpperCase() === 'BIRU';
+      const colorStr = (typeof color === 'object' && color !== null) ? (color.color || '') : color;
+      const isBlue = colorStr.toUpperCase() === 'BLUE' || colorStr.toUpperCase() === 'BIRU';
       const sudutBatal = isBlue ? "SUDUT BIRU" : "SUDUT MERAH";
       const sudutMenang = isBlue ? "SUDUT MERAH" : "SUDUT BIRU";
 
@@ -379,7 +382,7 @@
       const verifyResultEl = document.getElementById('tvVerifyResult');
 
       if (isCancelled) {
-        // NOTIFIKASI PEMBATALAN DQ (DIBATALKAN SAMULA)
+        // NOTIFIKASI PEMBATALAN DQ (DIBATALKAN SEMULA)
         tvTitleEl.innerText = "ℹ️ PEMBATALAN DQ ℹ️";
         tvTitleEl.style.color = "#2ecc71";
 
@@ -417,14 +420,23 @@
       }, 5000);
     }
 
-    // DISQUALIFIED ALERT FROM SOCKET
-    socket.on('disqualifiedAlert', (color) => {
-      showDQNotification(color, false);
+    // DISQUALIFIED ALERT FROM SOCKET (HANDLES BOTH OBJECT & STRING DATA)
+    socket.on('disqualifiedAlert', (data) => {
+      if (typeof data === 'object' && data !== null) {
+        if (data.action === 'cancel') {
+          showDQNotification(data.color, true);
+        } else {
+          showDQNotification(data.color, false);
+        }
+      } else {
+        showDQNotification(data, false);
+      }
     });
 
     // CANCEL DISQUALIFIED ALERT FROM SOCKET
-    socket.on('cancelDisqualifiedAlert', (color) => {
-      showDQNotification(color, true);
+    socket.on('cancelDisqualifiedAlert', (data) => {
+      const colorVal = (typeof data === 'object' && data !== null) ? data.color : data;
+      showDQNotification(colorVal, true);
     });
   </script>
 </body>
