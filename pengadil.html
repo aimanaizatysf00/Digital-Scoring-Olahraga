@@ -386,7 +386,7 @@
           }
         });
 
-        // Kemaskini status DQ dengan tepat (Menyelesaikan isu butang tidak terpadam)
+        // Kemaskini status DQ daripada state server
         const dqStatus = (state.penalties && state.penalties[color]) ? Boolean(state.penalties[color]['DQ']) : false;
         isDisqualified[color] = dqStatus;
 
@@ -407,7 +407,7 @@
       }
     });
 
-    // MENERIMA PEMBATALAN DQ DARI EVENT DISQUALIFIED ALERT
+    // MENERIMA PEMBATALAN / APLIKASI DQ DARI EVENT DISQUALIFIED ALERT
     socket.on('disqualifiedAlert', (data) => {
       if (!data) return;
       const color = data.color;
@@ -518,7 +518,7 @@
 
     function togglePenalty(color, code, pts) { socket.emit('togglePenalty', { color, code, pts }); }
 
-    // FUNGSI KHUSUS DISKUALIFIKASI (DQ) - TOGGLE WITH CONFIRMATION
+    // FUNGSI KHUSUS DISKUALIFIKASI (DQ) - DIBAIKI SYNC & EVENT EMISSION
     function handleDisqualification(color) {
       const btnDQ = document.getElementById(`btn_${color}_DQ`);
       const colorText = (color === 'blue' || color === 'biru') ? 'SUDUT BIRU' : 'SUDUT MERAH';
@@ -536,12 +536,11 @@
             isDisqualified[color] = true;
             if (btnDQ) btnDQ.classList.add('active-disqualify');
             controlTimer('pause');
+            socket.emit('togglePenalty', { color: color, code: 'DQ', pts: 0 });
             socket.emit('disqualifiedAlert', { color: color, action: 'apply' });
           },
-          // TEKAN BATAL (Batal tindakan)
-          function() {
-            // Kekal tidak aktif
-          }
+          // TEKAN BATAL
+          function() {}
         );
       } 
       // JIKA SUDAH DQ -> PROSES BATALKAN DQ (UNTUK TUTUP BALIK)
@@ -553,12 +552,11 @@
           function() {
             isDisqualified[color] = false;
             if (btnDQ) btnDQ.classList.remove('active-disqualify');
+            socket.emit('togglePenalty', { color: color, code: 'DQ', pts: 0 });
             socket.emit('disqualifiedAlert', { color: color, action: 'cancel' });
           },
-          // TEKAN BATAL (Kekalkan status DQ)
-          function() {
-            // Kekal aktif
-          }
+          // TEKAN BATAL
+          function() {}
         );
       }
     }
