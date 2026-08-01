@@ -341,7 +341,10 @@ io.on('connection', (socket) => {
         state.stats[col].jatuhan += 1;
         addLog(`🤼 MARKAH JATUHAN (+${points}) - Sudut ${col.toUpperCase()}`);
         
-        // Hantar isyarat langsung ke TV untuk tayang animasi/nyalaan Jatuhan
+        // 1. Pancarkan isyarat nyalaan ke TV (Supaya TV mendengar event juriPressSignal)
+        io.emit('juriPressSignal', { color: col, points: points, type: 'jatuhan' });
+        
+        // 2. Jika anda masih mahu paparan khas overlay (opsyenal)
         io.emit('showJatuhanOverlay', { color: col, pts: points });
       } else {
         if (state.stats[col].jatuhan > 0) state.stats[col].jatuhan -= 1;
@@ -351,7 +354,7 @@ io.on('connection', (socket) => {
       io.emit('updateState', state);
     }
   });
-
+  
   // LOGIK MAJORITI JURI
   socket.on('pressScore', (data) => {
     const juriId = Number(data.juriId);
